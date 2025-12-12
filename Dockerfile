@@ -1,18 +1,35 @@
-# Use Java 21 base image
-FROM eclipse-temurin:21-jdk
+# Multi-stage build for smaller image size
+# Stage 1: Build with JDK 21
+FROM maven:3.9.6-eclipse-temurin-21 AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy everything into the image
-COPY . .
+# Copy pom.xml first (for better caching)
+COPY pom.xml .
 
-# Build the app
-RUN ./mvnw clean package -DskipTests
+# Download dependencies (cached if pom.xml doesn't change)
+RUN mvn dependency:go-offline -B
 
-# Expose port Spring Boot runs on
+# Copy source code
+COPY src ./src
+
+# Build application
+RUN mvn clean package -DskipTests
+
+# Stage 2: Runtime with JRE only (smaller image)
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+# Create a non-root user for security
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
+
+# Copy the built JAR from builder stage
+COPY --from=builder --chown=spring:spring /app/target/app.jar app.jar
+
+# Expose port
 EXPOSE 8080
 
-# Run the app
-CMD ["java", "-jar", "target/sample-0.0.1-SNAPSHOT.jar"]
-
+# Run the application with optimized JVM settings
+ENTRYPOINT ["java", "-jar", "ITmarketapp.jar"]
