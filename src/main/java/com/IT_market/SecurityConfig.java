@@ -1,9 +1,6 @@
 
 package com.IT_market;
 
-
-package com.onlinemkt.sample;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
