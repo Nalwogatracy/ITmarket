@@ -1,0 +1,26 @@
+package com.IT_market.dto;
+
+public class OrderItemRequest {
+    
+    private String productId;
+    private Integer quantity;
+    
+    public OrderItemRequest() {}
+    
+    // Getters and Setters
+    public String getProductId() {
+        return productId;
+    }
+    
+    public void setProductId(String productId) {
+        this.productId = productId;
+    }
+    
+    public Integer getQuantity() {
+        return quantity;
+    }
+    
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+}

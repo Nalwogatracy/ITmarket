@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechSphere - Professional IT Marketplace</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        },
+                        tech: {
+                            blue: '#0066ff',
+                            purple: '#8b5cf6',
+                            cyan: '#06b6d4',
+                            gray: '#1f2937'
+                        }
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                        'mono': ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #0066ff 0%, #8b5cf6 100%);
+            --tech-gradient: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        .gradient-bg {
+            background: var(--tech-gradient);
+        }
+        
+        .tech-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .cart-pulse {
+            animation: cartPulse 2s infinite;
+        }
+        
+        @keyframes cartPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .product-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .product-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            animation: bounce 1s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Hide scrollbar but keep functionality */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100">
+
+    <!-- Notification Toast -->
+    <div id="notificationToast" class="fixed top-4 right-4 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 max-w-sm transform translate-x-full transition-transform duration-300">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <i id="toastIcon" class="fas text-blue-500"></i>
+            </div>
+            <div class="ml-3">
+                <p id="toastMessage" class="text-sm font-medium text-gray-900 dark:text-gray-100"></p>
+                <p id="toastSubMessage" class="mt-1 text-xs text-gray-500 dark:text-gray-400"></p>
+            </div>
+            <button onclick="hideToast()" class="ml-auto text-gray-400 hover:text-gray-500">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Custom Modal for Product Details -->
+    <div id="productDetailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-6">
+                    <h3 id="modalProductTitle" class="text-2xl font-bold text-gray-900 dark:text-gray-100"></h3>
+                    <button onclick="closeProductModal()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <img id="modalProductImage" src="" alt="" class="w-full h-64 object-cover rounded-lg mb-4">
+                        <div class="grid grid-cols-4 gap-2">
+                            <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80" 
+                                 class="h-20 w-full object-cover rounded cursor-pointer hover:opacity-80" alt="Thumbnail 1">
+                            <img src="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80" 
+                                 class="h-20 w-full object-cover rounded cursor-pointer hover:opacity-80" alt="Thumbnail 2">
+                            <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80" 
+                                 class="h-20 w-full object-cover rounded cursor-pointer hover:opacity-80" alt="Thumbnail 3">
+                            <img src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80" 
+                                 class="h-20 w-full object-cover rounded cursor-pointer hover:opacity-80" alt="Thumbnail 4">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="mb-6">
+                            <p id="modalProductDescription" class="text-gray-600 dark:text-gray-300 mb-4"></p>
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <span id="modalProductPrice" class="text-3xl font-bold text-blue-600 dark:text-blue-400"></span>
+                                    <span id="modalProductOldPrice" class="text-lg text-gray-500 dark:text-gray-400 line-through ml-2"></span>
+                                </div>
+                                <span id="modalProductDiscount" class="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-3 py-1 rounded-full text-sm font-bold"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium text-gray-700 dark:text-gray-300">Quantity:</span>
+                                <div class="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg">
+                                    <button onclick="updateQuantity(-1)" class="px-3 py-1 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">-</button>
+                                    <span id="productQuantity" class="px-4 py-1">1</span>
+                                    <button onclick="updateQuantity(1)" class="px-3 py-1 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">+</button>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium text-gray-700 dark:text-gray-300">Total:</span>
+                                <span id="modalProductTotal" class="text-2xl font-bold text-blue-600 dark:text-blue-400"></span>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-3 mt-6">
+                                <button onclick="addToCartFromModal()" 
+                                        class="bg-blue-600 dark:bg-blue-700 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center justify-center">
+                                    <i class="fas fa-shopping-cart mr-2"></i> Add to Cart
+                                </button>
+                                <button onclick="checkoutProduct()" 
+                                        class="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700 transition-colors">
+                                    Buy Now
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                            <h4 class="font-bold text-gray-900 dark:text-gray-100 mb-3">Specifications</h4>
+                            <div id="modalProductSpecs" class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                                <!-- Specifications will be added dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Sidebar -->
+    <div id="cartSidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-white dark:bg-gray-800 shadow-2xl transform translate-x-full transition-transform duration-300 z-50">
+        <div class="h-full flex flex-col">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">
+                        <i class="fas fa-shopping-cart mr-2"></i> Shopping Cart
+                        <span id="cartItemsCount" class="ml-2 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm px-2 py-1 rounded-full">0 items</span>
+                    </h3>
+                    <button onclick="closeCart()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="cartItemsContainer" class="flex-1 overflow-y-auto p-6">
+                <!-- Cart items will be loaded here -->
+                <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+                    <i class="fas fa-shopping-cart text-4xl mb-4"></i>
+                    <p class="text-lg">Your cart is empty</p>
+                    <p class="text-sm mt-2">Add some awesome tech products!</p>
+                </div>
+            </div>
+            
+            <div class="p-6 border-t border-gray-200 dark:border-gray-700 space-y-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 dark:text-gray-400">Subtotal</span>
+                    <span id="cartSubtotal" class="text-lg font-bold text-gray-900 dark:text-gray-100">$0.00</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 dark:text-gray-400">Shipping</span>
+                    <span class="text-gray-900 dark:text-gray-100">Calculated at checkout</span>
+                </div>
+                <div class="flex justify-between items-center text-lg font-bold pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <span>Total</span>
+                    <span id="cartTotal" class="text-xl text-blue-600 dark:text-blue-400">$0.00</span>
+                </div>
+                
+                <div class="space-y-3 pt-4">
+                    <button onclick="proceedToCheckout()" 
+                            class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300">
+                        Proceed to Checkout
+                    </button>
+                    <button onclick="continueShopping()" 
+                            class="w-full border-2 border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400 py-3 rounded-lg font-semibold hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">
+                        Continue Shopping
+                    </button>
+                </div>
+                
+                <div class="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+                    <i class="fas fa-lock mr-1"></i> Secure checkout · SSL encrypted
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div id="checkoutModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-8">
+                <h3 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 text-center">Complete Your Order</h3>
+                
+                <div id="checkoutAsGuest" class="space-y-6">
+                    <div class="glass-effect rounded-xl p-6">
+                        <h4 class="font-bold text-gray-900 dark:text-gray-100 mb-4">Guest Checkout</h4>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4">You can checkout as a guest. We'll send order details to your email.</p>
+                        
+                        <div class="space-y-4">
+                            <input type="email" id="guestEmail" placeholder="Enter your email address" 
+                                   class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700">
+                            <input type="text" id="guestPhone" placeholder="Phone number (optional)" 
+                                   class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700">
+                            <textarea id="guestNotes" placeholder="Additional notes for your order..." 
+                                      rows="3" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-gray-600 dark:text-gray-400">Order Total</span>
+                            <span id="checkoutTotal" class="text-2xl font-bold text-blue-600 dark:text-blue-400"></span>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <button onclick="submitGuestOrder()" 
+                                    class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-lg font-bold hover:from-green-600 hover:to-emerald-700 transition-all duration-300">
+                                <i class="fas fa-paper-plane mr-2"></i> Submit Order
+                            </button>
+                            <button onclick="closeCheckoutModal()" 
+                                    class="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                Cancel
+                            </button>
+                        </div>
+                        
+                        <div class="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
+                            <p><i class="fas fa-shield-alt mr-1"></i> Your order is secure</p>
+                            <p class="mt-1">Admin will be notified immediately for processing</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="checkoutSuccess" class="hidden text-center py-8">
+                    <div class="text-green-500 text-5xl mb-6">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h4 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Order Submitted Successfully!</h4>
+                    <p class="text-gray-600 dark:text-gray-300 mb-6">Your order has been received and admin has been notified.</p>
+                    <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
+                        <p class="font-mono text-sm">Order ID: <span id="orderId" class="font-bold"></span></p>
+                    </div>
+                    <button onclick="closeCheckoutModal()" 
+                            class="bg-blue-600 text-white py-3 px-8 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+                        Continue Shopping
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-40">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <a href="#" class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-microchip text-white text-sm"></i>
+                    </div>
+                    <span class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">TechSphere</span>
+                </a>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden lg:flex items-center space-x-8">
+                    <a href="#" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">
+                        <i class="fas fa-laptop-code mr-2"></i>Products
+                    </a>
+                    <a href="#" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">
+                        <i class="fas fa-tags mr-2"></i>Categories
+                    </a>
+                    <a href="#" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">
+                        <i class="fas fa-briefcase mr-2"></i>For Business
+                    </a>
+                    <a href="#" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">
+                        <i class="fas fa-headset mr-2"></i>Support
+                    </a>
+                    
+                    <div class="relative group">
+                        <button class="flex items-center space-x-1 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium">
+                            <span>More</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        <div class="absolute hidden group-hover:block w-48 bg-white dark:bg-gray-800 shadow-xl rounded-lg mt-2 py-2 border border-gray-200 dark:border-gray-700">
+                            <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">Enterprise Solutions</a>
+                            <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">Bulk Orders</a>
+                            <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">Tech Services</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Side Actions -->
+                <div class="flex items-center space-x-4">
+                    <!-- Search Button (Mobile) -->
+                    <button id="searchToggle" class="lg:hidden text-gray-600 dark:text-gray-300">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    
+                    <!-- Cart -->
+                    <button onclick="openCart()" class="relative p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                        <i class="fas fa-shopping-cart text-xl text-gray-700 dark:text-gray-300"></i>
+                        <span id="navCartCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+                    </button>
+                    
+                    <!-- User Actions -->
+                    <div class="hidden lg:flex items-center space-x-3">
+                        <button onclick="openModal('loginModal')" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium py-2 px-4 transition-colors">
+                            Sign In
+                        </button>
+                        <button onclick="openModal('registerModal')" 
+                                class="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-6 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-300">
+                            Register
+                        </button>
+                    </div>
+                    
+                    <!-- Dark Mode Toggle -->
+                    <button id="darkModeToggle" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                        <i id="darkModeIcon" class="fas fa-moon text-lg text-gray-700 dark:text-yellow-300"></i>
+                    </button>
+                    
+                    <!-- Mobile Menu Button -->
+                    <button id="mobileMenuBtn" class="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                        <i class="fas fa-bars text-lg"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Mobile Search Bar -->
+            <div id="mobileSearch" class="lg:hidden hidden mt-4 pb-4">
+                <div class="relative">
+                    <input type="text" placeholder="Search tech products..." 
+                           class="w-full px-4 py-3 pl-12 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="lg:hidden hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+            <div class="px-4 py-3 space-y-1">
+                <a href="#" class="block px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-laptop-code mr-3"></i>Products
+                </a>
+                <a href="#" class="block px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-tags mr-3"></i>Categories
+                </a>
+                <a href="#" class="block px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-briefcase mr-3"></i>For Business
+                </a>
+                <a href="#" class="block px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-headset mr-3"></i>Support
+                </a>
+                <button onclick="openModal('loginModal')" class="block w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-sign-in-alt mr-3"></i>Sign In
+                </button>
+                <button onclick="openModal('registerModal')" 
+                        class="block w-full text-left px-3 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                    <i class="fas fa-user-plus mr-3"></i>Register
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden gradient-bg text-white">
+        <div class="absolute inset-0">
+            <div class="absolute inset-0 bg-black opacity-10"></div>
+            <div class="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"></div>
+        </div>
+        
+        <div class="relative container mx-auto px-4 py-20 md:py-28">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div class="text-center lg:text-left">
+                    <div class="inline-flex items-center glass-effect px-4 py-2 rounded-full mb-6">
+                        <span class="text-yellow-300 mr-2">🚀</span>
+                        <span class="text-sm font-semibold">Enterprise-Grade IT Solutions</span>
+                    </div>
+                    
+                    <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
+                        <span class="block">Professional</span>
+                        <span class="block text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
+                            IT Marketplace
+                        </span>
+                    </h1>
+                    
+                    <p class="text-xl opacity-90 mb-8 max-w-2xl mx-auto lg:mx-0">
+                        Source enterprise hardware, software, and IT services from verified suppliers. 
+                        Bulk ordering available for businesses.
+                    </p>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4 mb-10">
+                        <button onclick="scrollToProducts()" 
+                                class="bg-white text-gray-900 px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center">
+                            <i class="fas fa-shopping-basket mr-3"></i>
+                            Browse Products
+                        </button>
+                        <button onclick="openModal('registerModal')" 
+                                class="border-2 border-white text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/10 transition-all duration-300 flex items-center justify-center">
+                            <i class="fas fa-store mr-3"></i>
+                            Sell on TechSphere
+                        </button>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-6">
+                        <div class="flex items-center">
+                            <i class="fas fa-shield-alt text-cyan-400 text-2xl mr-3"></i>
+                            <div>
+                                <div class="text-lg font-bold">Secure Transactions</div>
+                                <div class="text-sm opacity-80">Enterprise-grade security</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-shipping-fast text-cyan-400 text-2xl mr-3"></i>
+                            <div>
+                                <div class="text-lg font-bold">Fast Delivery</div>
+                                <div class="text-sm opacity-80">Global shipping</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-headset text-cyan-400 text-2xl mr-3"></i>
+                            <div>
+                                <div class="text-lg font-bold">24/7 Support</div>
+                                <div class="text-sm opacity-80">Dedicated account managers</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hero Product Showcase -->
+                <div class="hidden lg:block">
+                    <div class="relative">
+                        <div class="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20">
+                            <div class="grid grid-cols-2 gap-6">
+                                <div class="tech-card rounded-xl p-6 transform hover:scale-105 transition-transform duration-300">
+                                    <div class="text-cyan-400 text-3xl mb-4">
+                                        <i class="fas fa-server"></i>
+                                    </div>
+                                    <h4 class="font-bold text-lg mb-2">Enterprise Servers</h4>
+                                    <p class="text-sm opacity-80 mb-4">High-performance rack & blade servers</p>
+                                    <div class="text-cyan-400 font-bold">From $2,499</div>
+                                </div>
+                                <div class="tech-card rounded-xl p-6 transform hover:scale-105 transition-transform duration-300">
+                                    <div class="text-purple-400 text-3xl mb-4">
+                                        <i class="fas fa-network-wired"></i>
+                                    </div>
+                                    <h4 class="font-bold text-lg mb-2">Networking</h4>
+                                    <p class="text-sm opacity-80 mb-4">Switches, routers & firewalls</p>
+                                    <div class="text-purple-400 font-bold">From $899</div>
+                                </div>
+                                <div class="tech-card rounded-xl p-6 transform hover:scale-105 transition-transform duration-300">
+                                    <div class="text-blue-400 text-3xl mb-4">
+                                        <i class="fas fa-laptop"></i>
+                                    </div>
+                                    <h4 class="font-bold text-lg mb-2">Workstations</h4>
+                                    <p class="text-sm opacity-80 mb-4">Professional-grade computers</p>
+                                    <div class="text-blue-400 font-bold">From $1,299</div>
+                                </div>
+                                <div class="tech-card rounded-xl p-6 transform hover:scale-105 transition-transform duration-300">
+                                    <div class="text-green-400 text-3xl mb-4">
+                                        <i class="fas fa-database"></i>
+                                    </div>
+                                    <h4 class="font-bold text-lg mb-2">Storage</h4>
+                                    <p class="text-sm opacity-80 mb-4">NAS, SAN & backup solutions</p>
+                                    <div class="text-green-400 font-bold">From $1,599</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Search & Filter Section -->
+    <div class="container mx-auto px-4 -mt-10 relative z-20">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6">
+            <div class="grid md:grid-cols-12 gap-4 items-end">
+                <div class="md:col-span-5">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search Products</label>
+                    <div class="relative">
+                        <input type="text" 
+                               id="productSearch"
+                               placeholder="Search servers, workstations, software..." 
+                               class="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700">
+                        <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                </div>
+                
+                <div class="md:col-span-3">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
+                    <select id="categoryFilter" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700">
+                        <option value="">All Categories</option>
+                        <option value="servers">Servers</option>
+                        <option value="networking">Networking</option>
+                        <option value="workstations">Workstations</option>
+                        <option value="storage">Storage Solutions</option>
+                        <option value="software">Software</option>
+                        <option value="peripherals">Peripherals</option>
+                    </select>
+                </div>
+                
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Price Range</label>
+                    <select id="priceFilter" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700">
+                        <option value="">Any Price</option>
+                        <option value="0-1000">Under $1,000</option>
+                        <option value="1000-5000">$1,000 - $5,000</option>
+                        <option value="5000-10000">$5,000 - $10,000</option>
+                        <option value="10000+">$10,000+</option>
+                    </select>
+                </div>
+                
+                <div class="md:col-span-2">
+                    <button id="searchBtn" 
+                            class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300">
+                        <i class="fas fa-search mr-2"></i> Search
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-4 flex flex-wrap gap-2">
+                <span class="text-sm text-gray-600 dark:text-gray-400">Popular:</span>
+                <button class="filter-chip active">Dell PowerEdge</button>
+                <button class="filter-chip">Cisco Networking</button>
+                <button class="filter-chip">HP Workstations</button>
+                <button class="filter-chip">Ubiquiti</button>
+                <button class="filter-chip">VMware License</button>
+                <button class="filter-chip">Dell Servers</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Featured Products Section -->
+    <section id="featured-products" class="container mx-auto px-4 py-16">
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Featured IT Products</h2>
+                <p class="text-gray-600 dark:text-gray-400 mt-2">Enterprise-grade hardware & software solutions</p>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button id="prevProducts" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button id="nextProducts" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div id="productsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            <!-- Product cards will be dynamically generated -->
+        </div>
+    </section>
+
+    <!-- Categories Section -->
+    <section class="bg-gray-100 dark:bg-gray-800/50 py-16">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-gray-100">Shop by Category</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <a href="#" class="category-card">
+                    <div class="bg-blue-100 dark:bg-blue-900/30 p-6 rounded-xl text-center hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors">
+                        <i class="fas fa-server text-3xl text-blue-600 dark:text-blue-400 mb-3"></i>
+                        <h4 class="font-semibold text-gray-900 dark:text-gray-100">Servers</h4>
+                    </div>
+                </a>
+                <a href="#" class="category-card">
+                    <div class="bg-purple-100 dark:bg-purple-900/30 p-6 rounded-xl text-center hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors">
+                        <i class="fas fa-network-wired text-3xl text-purple-600 dark:text-purple-400 mb-3"></i>
+                        <h4 class="font-semibold text-gray-900 dark:text-gray-100">Networking</h4>
+                    </div>
+                </a>
+                <a href="#" class="category-card">
+                    <div class="bg-green-100 dark:bg-green-900/30 p-6 rounded-xl text-center hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors">
+                        <i class="fas fa-laptop text-3xl text-green-600 dark:text-green-400 mb-3"></i>
+                        <h4 class="font-semibold text-gray-900 dark:text-gray-100">Workstations</h4>
+                    </div>
+                </a>
+                <a href="#" class="category-card">
+                    <div class="bg-cyan-100 dark:bg-cyan-900/30 p-6 rounded-xl text-center hover:bg-cyan-200 dark:hover:bg-cyan-800/50 transition-colors">
+                        <i class="fas fa-database text-3xl text-cyan-600 dark:text-cyan-400 mb-3"></i>
+                        <h4 class="font-semibold text-gray-900 dark:text-gray-100">Storage</h4>
+                    </div>
+                </a>
+                <a href="#" class="category-card">
+                    <div class="bg-orange-100 dark:bg-orange-900/30 p-6 rounded-xl text-center hover:bg-orange-200 dark:hover:bg-orange-800/50 transition-colors">
+                        <i class="fas fa-keyboard text-3xl text-orange-600 dark:text-orange-400 mb-3"></i>
+                        <h4 class="font-semibold text-gray-900 dark:text-gray-100">Peripherals</h4>
+                    </div>
+                </a>
+                <a href="#" class="category-card">
+                    <div class="bg-pink-100 dark:bg-pink-900/30 p-6 rounded-xl text-center hover:bg-pink-200 dark:hover:bg-pink-800/50 transition-colors">
+                        <i class="fas fa-code text-3xl text-pink-600 dark:text-pink-400 mb-3"></i>
+                        <h4 class="font-semibold text-gray-900 dark:text-gray-100">Software</h4>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Choose Us Section -->
+    <section class="container mx-auto px-4 py-16">
+        <h2 class="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-gray-100">Why TechSphere?</h2>
+        <div class="grid md:grid-cols-3 gap-8">
+            <div class="text-center p-6">
+                <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-shield-alt text-2xl text-blue-600 dark:text-blue-400"></i>
+                </div>
+                <h4 class="text-xl font-bold mb-3 text-gray-900 dark:text-gray-100">Secure & Verified</h4>
+                <p class="text-gray-600 dark:text-gray-400">All suppliers are verified. Enterprise-grade security for all transactions.</p>
+            </div>
+            <div class="text-center p-6">
+                <div class="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-shipping-fast text-2xl text-green-600 dark:text-green-400"></i>
+                </div>
+                <h4 class="text-xl font-bold mb-3 text-gray-900 dark:text-gray-100">Global Logistics</h4>
+                <p class="text-gray-600 dark:text-gray-400">Worldwide shipping with real-time tracking and customs clearance support.</p>
+            </div>
+            <div class="text-center p-6">
+                <div class="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-headset text-2xl text-purple-600 dark:text-purple-400"></i>
+                </div>
+                <h4 class="text-xl font-bold mb-3 text-gray-900 dark:text-gray-100">Dedicated Support</h4>
+                <p class="text-gray-600 dark:text-gray-400">24/7 enterprise support with dedicated account managers for businesses.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modals (Login/Register) - Keep your existing modals but update styling -->
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl max-w-md w-full mx-4">
+            <h3 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100 text-center">Sign In</h3>
+            <form th:action="@{/login}" method="post">
+                <!-- Keep your existing login form fields -->
+                <div class="space-y-4">
+                    <input type="email" placeholder="Email address" required class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <input type="password" placeholder="Password" required class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold">Sign In</button>
+                </div>
+            </form>
+            <div class="mt-6 text-center text-gray-600 dark:text-gray-400">
+                <p>Guest user? <button onclick="closeModal('loginModal')" class="text-blue-600 dark:text-blue-400 font-semibold">Continue shopping</button></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="registerModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl max-w-md w-full mx-4">
+            <h3 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100 text-center">Business Account</h3>
+            <form th:action="@{/register}" method="post">
+                <!-- Keep your existing registration form fields -->
+                <div class="space-y-4">
+                    <input type="text" placeholder="Company Name" required class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <input type="email" placeholder="Business Email" required class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <input type="tel" placeholder="Phone Number" required class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white pt-12 pb-6">
+        <div class="container mx-auto px-4">
+            <div class="grid md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-microchip text-white text-sm"></i>
+                        </div>
+                        <span class="text-xl font-bold">TechSphere</span>
+                    </div>
+                    <p class="text-gray-400 text-sm">Professional IT marketplace for enterprises and businesses.</p>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-4">Products</h4>
+                    <ul class="space-y-2 text-gray-400 text-sm">
+                        <li><a href="#" class="hover:text-white">Servers</a></li>
+                        <li><a href="#" class="hover:text-white">Networking</a></li>
+                        <li><a href="#" class="hover:text-white">Workstations</a></li>
+                        <li><a href="#" class="hover:text-white">Storage Solutions</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-4">Services</h4>
+                    <ul class="space-y-2 text-gray-400 text-sm">
+                        <li><a href="#" class="hover:text-white">Bulk Orders</a></li>
+                        <li><a href="#" class="hover:text-white">IT Consultation</a></li>
+                        <li><a href="#" class="hover:text-white">Enterprise Support</a></li>
+                        <li><a href="#" class="hover:text-white">Custom Solutions</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-4">Contact</h4>
+                    <ul class="space-y-2 text-gray-400 text-sm">
+                        <li><i class="fas fa-phone mr-2"></i> +1 (555) 123-4567</li>
+                        <li><i class="fas fa-envelope mr-2"></i> enterprise@techsphere.com</li>
+                        <li><i class="fas fa-map-marker-alt mr-2"></i> San Francisco, CA</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-6 text-center text-gray-400 text-sm">
+                <p>&copy; 2025 TechSphere. All rights reserved. Enterprise IT Marketplace.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Main Application JavaScript -->
+    <script>
+        // ========== GLOBAL STATE ==========
+        let cart = JSON.parse(localStorage.getItem('techsphere_cart') || '[]');
+        let currentProduct = null;
+        let currentQuantity = 1;
+
+        // ========== PRODUCT DATA ==========
+        const products = [
+            {
+                id: 1,
+                name: "Dell PowerEdge R750 Server",
+                category: "servers",
+                price: 5899,
+                oldPrice: 6499,
+                discount: "10% OFF",
+                description: "High-performance 2U rack server with dual Intel Xeon processors, 256GB RAM, and 8TB SSD storage.",
+                specs: [
+                    "2x Intel Xeon Silver 4314",
+                    "256GB DDR4 ECC RAM",
+                    "8TB NVMe SSD Storage",
+                    "Dual 10GbE Network",
+                    "Redundant 1100W PSU",
+                    "3-Year ProSupport"
+                ],
+                image: "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+            },
+            {
+                id: 2,
+                name: "Cisco Catalyst 9300 Switch",
+                category: "networking",
+                price: 3299,
+                oldPrice: 3899,
+                discount: "15% OFF",
+                description: "Enterprise-grade stackable switch with 48-port Gigabit Ethernet and advanced security features.",
+                specs: [
+                    "48x 1GbE Ports",
+                    "4x 10GbE SFP+ Uplinks",
+                    "StackWise-480 Technology",
+                    "Network Essentials",
+                    "Lifetime Warranty"
+                ],
+                image: "https://images.unsplash.com/photo-1629654291660-3c98113a0437?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+            },
+            {
+                id: 3,
+                name: "HP Z8 G4 Workstation",
+                category: "workstations",
+                price: 4599,
+                oldPrice: 4999,
+                discount: "8% OFF",
+                description: "Professional workstation with dual Xeon processors and NVIDIA RTX A6000 GPU for demanding applications.",
+                specs: [
+                    "2x Intel Xeon W-3375",
+                    "128GB DDR4 ECC RAM",
+                    "NVIDIA RTX A6000 48GB",
+                    "2TB SSD + 4TB HDD",
+                    "850W 80+ Platinum PSU"
+                ],
+                image: "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+            },
+            {
+                id: 4,
+                name: "Synology RackStation RS3621RPxs",
+                category: "storage",
+                price: 4299,
+                oldPrice: 4799,
+                description: "12-bay rackmount NAS for enterprise storage and backup solutions.",
+                specs: [
+                    "12-bay Rackmount",
+                    "Intel Xeon D-1527",
+                    "16GB DDR4 ECC RAM",
+                    "Dual 10GbE + Quad 1GbE",
+                    "Redundant PSU"
+                ],
+                image: "https://images.unsplash.com/photo-1621252179027-9445960b5d5a?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+            },
+            {
+                id: 5,
+                name: "VMware vSphere 7 Enterprise",
+                category: "software",
+                price: 3499,
+                description: "Virtualization platform for building cloud infrastructures.",
+                specs: [
+                    "Per CPU License",
+                    "vCenter Server Included",
+                    "vMotion & HA",
+                    "1-Year Support"
+                ],
+                image: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+            },
+            {
+                id: 6,
+                name: "Dell Ultrasharp 49\" Monitor",
+                category: "peripherals",
+                price: 1299,
+                oldPrice: 1499,
+                discount: "13% OFF",
+                description: "49-inch curved monitor with 5120x1440 resolution and USB-C connectivity.",
+                specs: [
+                    "49\" Curved Display",
+                    "5120 x 1440 @ 60Hz",
+                    "USB-C with 90W PD",
+                    "Picture-by-Picture",
+                    "3-Year Advanced Exchange"
+                ],
+                image: "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+            },
+            {
+                id: 7,
+                name: "Ubiquiti UniFi Dream Machine Pro",
+                category: "networking",
+                price: 379,
+                description: "Enterprise security gateway with network controller and threat management.",
+                specs: [
+                    "3.5\" Rackmount",
+                    "8-Port Switch",
+                    "1.7 Gbps Firewall",
+                    "IDS/IPS",
+                    "Network Controller"
+                ],
+                image: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+            },
+            {
+                id: 8,
+                name: "APC Smart-UPS SRT 3000VA",
+                category: "servers",
+                price: 1499,
+                description: "Double-conversion online UPS with extended runtime for critical infrastructure.",
+                specs: [
+                    "3000VA / 2700W",
+                    "Double Conversion Online",
+                    "LCD Display",
+                    "Network Management",
+                    "2U Rackmount"
+                ],
+                image: "https://images.unsplash.com/photo-1621570362984-b74e5e18d3f8?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+            }
+        ];
+
+        // ========== UTILITY FUNCTIONS ==========
+        function showNotification(message, type = 'info', subMessage = '') {
+            const toast = document.getElementById('notificationToast');
+            const icon = document.getElementById('toastIcon');
+            const messageEl = document.getElementById('toastMessage');
+            const subMessageEl = document.getElementById('toastSubMessage');
+            
+            // Set icon based on type
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+            
+            icon.className = `fas ${icons[type] || icons.info} text-${type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue'}-500`;
+            messageEl.textContent = message;
+            subMessageEl.textContent = subMessage;
+            
+            toast.classList.remove('translate-x-full');
+            
+            // Auto hide after 5 seconds
+            setTimeout(hideToast, 5000);
+        }
+
+        function hideToast() {
+            document.getElementById('notificationToast').classList.add('translate-x-full');
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(amount);
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        // ========== CART MANAGEMENT ==========
+        function openCart() {
+            document.getElementById('cartSidebar').classList.remove('translate-x-full');
+            updateCartDisplay();
+        }
+
+        function closeCart() {
+            document.getElementById('cartSidebar').classList.add('translate-x-full');
+        }
+
+        function updateCartCount() {
+            const count = cart.reduce((total, item) => total + item.quantity, 0);
+            document.getElementById('navCartCount').textContent = count;
+            
+            // Update cart sidebar header
+            const itemsText = count === 1 ? '1 item' : `${count} items`;
+            document.getElementById('cartItemsCount').textContent = itemsText;
+            
+            // Save to localStorage
+            localStorage.setItem('techsphere_cart', JSON.stringify(cart));
+        }
+
+        function addToCart(productId, quantity = 1) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const existingItem = cart.find(item => item.id === productId);
+            
+            if (existingItem) {
+                existingItem.quantity += quantity;
+            } else {
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    image: product.image,
+                    quantity: quantity
+                });
+            }
+            
+            updateCartCount();
+            showNotification('Added to cart', 'success', `${product.name} added to your cart`);
+            
+            // Pulse animation on cart icon
+            const cartIcon = document.querySelector('[onclick="openCart()"]');
+            cartIcon.classList.add('cart-pulse');
+            setTimeout(() => cartIcon.classList.remove('cart-pulse'), 1000);
+        }
+
+        function updateCartDisplay() {
+            const container = document.getElementById('cartItemsContainer');
+            const subtotalEl = document.getElementById('cartSubtotal');
+            const totalEl = document.getElementById('cartTotal');
+            
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-shopping-cart text-4xl mb-4"></i>
+                        <p class="text-lg">Your cart is empty</p>
+                        <p class="text-sm mt-2">Add some awesome tech products!</p>
+                    </div>
+                `;
+                subtotalEl.textContent = '$0.00';
+                totalEl.textContent = '$0.00';
+                return;
+            }
+            
+            let subtotal = 0;
+            let html = '';
+            
+            cart.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                subtotal += itemTotal;
+                
+                html += `
+                    <div class="flex items-center space-x-4 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                        <img src="${item.image}" alt="${item.name}" class="w-20 h-20 object-cover rounded-lg">
+                        <div class="flex-1">
+                            <h4 class="font-medium text-gray-900 dark:text-gray-100">${item.name}</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">${formatCurrency(item.price)} each</p>
+                            <div class="flex items-center justify-between mt-2">
+                                <div class="flex items-center border border-gray-300 dark:border-gray-600 rounded">
+                                    <button onclick="updateCartItemQuantity(${item.id}, -1)" class="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700">-</button>
+                                    <span class="px-3 py-1">${item.quantity}</span>
+                                    <button onclick="updateCartItemQuantity(${item.id}, 1)" class="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700">+</button>
+                                </div>
+                                <div class="font-medium">${formatCurrency(itemTotal)}</div>
+                            </div>
+                        </div>
+                        <button onclick="removeFromCart(${item.id})" class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            subtotalEl.textContent = formatCurrency(subtotal);
+            totalEl.textContent = formatCurrency(subtotal);
+        }
+
+        function updateCartItemQuantity(productId, change) {
+            const item = cart.find(item => item.id === productId);
+            if (!item) return;
+            
+            item.quantity += change;
+            
+            if (item.quantity <= 0) {
+                cart = cart.filter(item => item.id !== productId);
+            }
+            
+            updateCartCount();
+            updateCartDisplay();
+        }
+
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            updateCartCount();
+            updateCartDisplay();
+            showNotification('Item removed', 'info', 'Product removed from cart');
+        }
+
+        function continueShopping() {
+            closeCart();
+            document.getElementById('featured-products').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ========== PRODUCT MANAGEMENT ==========
+        function renderProducts() {
+            const container = document.getElementById('productsContainer');
+            container.innerHTML = '';
+            
+            products.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'product-card bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden';
+                
+                card.innerHTML = `
+                    <div class="relative">
+                        <img src="${product.image}" alt="${product.name}" class="w-full h-48 object-cover">
+                        ${product.discount ? `
+                            <div class="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                                ${product.discount}
+                            </div>
+                        ` : ''}
+                        <button onclick="addToCart(${product.id})" 
+                                class="absolute top-3 right-3 bg-white/90 dark:bg-gray-800/90 p-2 rounded-full hover:bg-white dark:hover:bg-gray-700 transition-colors">
+                            <i class="fas fa-shopping-cart text-blue-600 dark:text-blue-400"></i>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-start justify-between mb-2">
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">${product.name}</h3>
+                            <span class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded">${product.category}</span>
+                        </div>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">${product.description}</p>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">${formatCurrency(product.price)}</div>
+                                ${product.oldPrice ? `
+                                    <div class="text-sm text-gray-500 dark:text-gray-400 line-through">${formatCurrency(product.oldPrice)}</div>
+                                ` : ''}
+                            </div>
+                            <button onclick="viewProductDetails(${product.id})" 
+                                    class="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors">
+                                View Details
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        function viewProductDetails(productId) {
+            currentProduct = products.find(p => p.id === productId);
+            if (!currentProduct) return;
+            
+            currentQuantity = 1;
+            
+            // Update modal content
+            document.getElementById('modalProductTitle').textContent = currentProduct.name;
+            document.getElementById('modalProductImage').src = currentProduct.image;
+            document.getElementById('modalProductDescription').textContent = currentProduct.description;
+            document.getElementById('modalProductPrice').textContent = formatCurrency(currentProduct.price);
+            
+            if (currentProduct.oldPrice) {
+                document.getElementById('modalProductOldPrice').textContent = formatCurrency(currentProduct.oldPrice);
+                document.getElementById('modalProductDiscount').textContent = currentProduct.discount || '';
+            }
+            
+            // Update specs
+            const specsContainer = document.getElementById('modalProductSpecs');
+            specsContainer.innerHTML = currentProduct.specs.map(spec => 
+                `<div class="flex items-center">
+                    <i class="fas fa-check text-green-500 mr-2"></i>
+                    <span>${spec}</span>
+                </div>`
+            ).join('');
+            
+            // Update total
+            updateProductTotal();
+            
+            // Show modal
+            document.getElementById('productDetailModal').classList.remove('hidden');
+        }
+
+        function closeProductModal() {
+            document.getElementById('productDetailModal').classList.add('hidden');
+        }
+
+        function updateQuantity(change) {
+            currentQuantity = Math.max(1, currentQuantity + change);
+            document.getElementById('productQuantity').textContent = currentQuantity;
+            updateProductTotal();
+        }
+
+        function updateProductTotal() {
+            if (!currentProduct) return;
+            const total = currentProduct.price * currentQuantity;
+            document.getElementById('modalProductTotal').textContent = formatCurrency(total);
+        }
+
+        function addToCartFromModal() {
+            if (!currentProduct) return;
+            addToCart(currentProduct.id, currentQuantity);
+            closeProductModal();
+        }
+
+        // ========== CHECKOUT & ORDER MANAGEMENT ==========
+        function proceedToCheckout() {
+            if (cart.length === 0) {
+                showNotification('Your cart is empty', 'warning');
+                return;
+            }
+            
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('checkoutTotal').textContent = formatCurrency(total);
+            document.getElementById('checkoutAsGuest').classList.remove('hidden');
+            document.getElementById('checkoutSuccess').classList.add('hidden');
+            openModal('checkoutModal');
+        }
+
+        function closeCheckoutModal() {
+            closeModal('checkoutModal');
+        }
+
+        function submitGuestOrder() {
+            const email = document.getElementById('guestEmail').value;
+            const phone = document.getElementById('guestPhone').value;
+            
+            if (!email) {
+                showNotification('Please enter your email address', 'error');
+                return;
+            }
+            
+            // Generate order ID
+            const orderId = 'TS-' + Date.now().toString().slice(-8);
+            
+            // Create order object
+            const order = {
+                id: orderId,
+                email: email,
+                phone: phone,
+                notes: document.getElementById('guestNotes').value,
+                items: cart,
+                total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+                date: new Date().toISOString(),
+                status: 'pending'
+            };
+            
+            // Save order to localStorage (simulating database)
+            const orders = JSON.parse(localStorage.getItem('techsphere_orders') || '[]');
+            orders.push(order);
+            localStorage.setItem('techsphere_orders', JSON.stringify(orders));
+            
+            // Clear cart
+            cart = [];
+            updateCartCount();
+            updateCartDisplay();
+            
+            // Show success message
+            document.getElementById('checkoutAsGuest').classList.add('hidden');
+            document.getElementById('checkoutSuccess').classList.remove('hidden');
+            document.getElementById('orderId').textContent = orderId;
+            
+            // Show notification (simulating admin notification)
+            showNotification('Order Submitted!', 'success', `Order ${orderId} has been sent to admin`);
+            
+            // In a real application, you would send this to your backend
+            // and trigger admin notifications via email/SMS/websocket
+            
+            console.log('📧 Admin Notification: New guest order received', order);
+            
+            // Simulate sending email to admin
+            simulateAdminNotification(order);
+        }
+
+        function simulateAdminNotification(order) {
+            // In a real app, this would be a server-side API call
+            console.log('🚨 ADMIN ALERT: New Order Received');
+            console.log('📋 Order Details:', order);
+            console.log('👤 Customer Email:', order.email);
+            console.log('💰 Total Amount:', formatCurrency(order.total));
+            console.log('📞 Contact Phone:', order.phone || 'Not provided');
+            
+            // You would typically:
+            // 1. Send email to admin
+            // 2. Send SMS notification
+            // 3. Update admin dashboard in real-time (via WebSocket)
+            // 4. Log to admin activity feed
+        }
+
+        function checkoutProduct() {
+            if (!currentProduct) return;
+            
+            // Add product to cart and proceed to checkout
+            addToCart(currentProduct.id, currentQuantity);
+            closeProductModal();
+            setTimeout(proceedToCheckout, 500);
+        }
+
+        // ========== SEARCH & FILTER ==========
+        function initSearch() {
+            const searchBtn = document.getElementById('searchBtn');
+            const searchInput = document.getElementById('productSearch');
+            const categoryFilter = document.getElementById('categoryFilter');
+            const priceFilter = document.getElementById('priceFilter');
+            
+            function performSearch() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const category = categoryFilter.value;
+                const priceRange = priceFilter.value;
+                
+                // Filter logic would go here
+                console.log('Search:', { searchTerm, category, priceRange });
+                // In a real app, you would filter products and re-render
+            }
+            
+            searchBtn.addEventListener('click', performSearch);
+            searchInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') performSearch();
+            });
+            
+            // Filter chips
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                    searchInput.value = this.textContent;
+                    performSearch();
+                });
+            });
+        }
+
+        // ========== DARK MODE ==========
+        function initDarkMode() {
+            const toggle = document.getElementById('darkModeToggle');
+            const icon = document.getElementById('darkModeIcon');
+            
+            function toggleDarkMode() {
+                const html = document.documentElement;
+                const isDark = html.classList.contains('dark');
+                
+                if (isDark) {
+                    html.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                    icon.className = 'fas fa-moon text-lg text-gray-700';
+                } else {
+                    html.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                    icon.className = 'fas fa-sun text-lg text-yellow-300';
+                }
+            }
+            
+            // Initialize theme
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark');
+                icon.className = 'fas fa-sun text-lg text-yellow-300';
+            }
+            
+            toggle.addEventListener('click', toggleDarkMode);
+        }
+
+        // ========== MOBILE MENU ==========
+        function initMobileMenu() {
+            const menuBtn = document.getElementById('mobileMenuBtn');
+            const searchToggle = document.getElementById('searchToggle');
+            const mobileMenu = document.getElementById('mobileMenu');
+            const mobileSearch = document.getElementById('mobileSearch');
+            
+            menuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            searchToggle.addEventListener('click', () => {
+                mobileSearch.classList.toggle('hidden');
+            });
+            
+            // Close mobile menu when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!menuBtn.contains(e.target) && !mobileMenu.contains(e.target)) {
+                    mobileMenu.classList.add('hidden');
+                }
+            });
+        }
+
+        // ========== SCROLL TO PRODUCTS ==========
+        function scrollToProducts() {
+            document.getElementById('featured-products').scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+
+        // ========== INITIALIZATION ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 TechSphere Marketplace initialized');
+            
+            // Initialize all components
+            renderProducts();
+            updateCartCount();
+            initSearch();
+            initDarkMode();
+            initMobileMenu();
+            
+            // Show welcome notification for guest users
+            setTimeout(() => {
+                showNotification('Welcome to TechSphere!', 'info', 'Shop as guest or create an account for business features');
+            }, 1000);
+            
+            // Close cart when clicking outside
+            document.addEventListener('click', (e) => {
+                const cartSidebar = document.getElementById('cartSidebar');
+                const cartButton = document.querySelector('[onclick="openCart()"]');
+                
+                if (!cartSidebar.contains(e.target) && !cartButton.contains(e.target)) {
+                    if (!cartSidebar.classList.contains('translate-x-full')) {
+                        closeCart();
+                    }
+                }
+            });
+        });
+
+        // ========== HELPER FUNCTIONS FOR UI ==========
+        function openProductQuickView(productId) {
+            // Quick view functionality
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            
+            showNotification('Quick View', 'info', `${product.name} - ${formatCurrency(product.price)}`);
+        }
+    </script>
+</body>
+</html>

@@ -1,32 +1,51 @@
 package com.IT_market;
 
-import org.springframework.context.annotation.Bean;
+import com.IT_market.security.AuthInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-public class WebConfig {
-
-    @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                // List of allowed origins
-                String[] allowedOrigins = new String[] {
-                    "http://localhost:3000", // React dev server
-                    "https://frontend-five-pied-81.vercel.app", // Production
-                    "https://frontend-git-master-nalwogas-projects.vercel.app",
-                    "https://frontend-ok4pfmi38-nalwogas-projects.vercel.app"
-                };
-
-                registry.addMapping("/**")
-                        .allowedOrigins(allowedOrigins)
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedHeaders("*")
-                        .allowCredentials(true);
-            }
-        };
+public class WebConfig implements WebMvcConfigurer {
+    
+    private final AuthInterceptor authInterceptor;
+    
+    public WebConfig(AuthInterceptor authInterceptor) {
+        this.authInterceptor = authInterceptor;
+    }
+    
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOriginPatterns("*")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .exposedHeaders("Authorization")
+                .allowCredentials(true);
+    }
+    
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(authInterceptor)
+                .addPathPatterns("/api/**")
+                .excludePathPatterns(
+                        "/api/auth/**",
+                        "/api/products",
+                        "/api/products/**",
+                        "/api/orders/guest",
+                        "/api/orders/by-email",
+                        "/api/health",
+                        "/uploads/**",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**"
+                );
+    }
+    
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:uploads/");
     }
 }

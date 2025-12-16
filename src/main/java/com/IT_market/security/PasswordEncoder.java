@@ -1,4 +1,5 @@
-package com.IT_market;
+
+package com.IT_market.security;
 
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.stereotype.Component;
