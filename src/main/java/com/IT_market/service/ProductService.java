@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import com.IT_market.service.CloudinaryService;
 
 @Service
 public class ProductService {
@@ -32,15 +33,17 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final CloudinaryService cloudinaryService;
     
-    private final String UPLOAD_DIR = "uploads/products/";
     
-    public ProductService(ProductRepository productRepository, 
-                         UserRepository userRepository,
-                         FileStorageService fileStorageService) {
-        this.productRepository = productRepository;
-        this.userRepository = userRepository;
-        this.fileStorageService = fileStorageService;
+    public ProductService(ProductRepository productRepository,
+                        CloudinaryService cloudinaryService,
+                     UserRepository userRepository,
+                     FileStorageService fileStorageService) {
+    this.productRepository = productRepository;
+    this.cloudinaryService = cloudinaryService; // ← ADD THIS LINE
+    this.userRepository = userRepository;
+    this.fileStorageService = fileStorageService;
     }
     
     @Transactional
@@ -454,21 +457,12 @@ public class ProductService {
     public String addProductImage(String productId, MultipartFile file, boolean isPrimary) throws IOException {
         Product product = getProductById(productId);
         
-        // Generate unique filename
-        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-        Path uploadPath = Paths.get(UPLOAD_DIR);
+        // 1. Upload to Cloudinary (simple one-liner)
+        String imageUrl = cloudinaryService.uploadProductImage(file);
         
-        // Create directories if they don't exist
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-        }
-        
-        Path filePath = uploadPath.resolve(fileName);
-        Files.copy(file.getInputStream(), filePath);
-        
-        // Create product image
+        // 2. Create and save your ProductImage entity with the URL
         ProductImage image = new ProductImage();
-        image.setImageUrl("/uploads/products/" + fileName);
+        image.setImageUrl(imageUrl);
         image.setAltText(product.getName());
         image.setPrimary(isPrimary);
         image.setProduct(product);
@@ -478,7 +472,7 @@ public class ProductService {
         product.setUpdatedAt(LocalDateTime.now());
         productRepository.save(product);
         
-        // If this is primary, ensure no other primary images
+        // 3. Optional: If setting as primary, update other images
         if (isPrimary) {
             for (ProductImage otherImage : product.getImages()) {
                 if (otherImage != image && otherImage.isPrimary()) {
@@ -487,9 +481,7 @@ public class ProductService {
             }
         }
         
-        String imageUrl = "/uploads/products/" + fileName;
-        System.out.println("Image uploaded for product: " + product.getName() + ". URL: " + imageUrl);
-        
+        System.out.println("Image uploaded to Cloudinary for product: " + product.getName() + ". URL: " + imageUrl);
         return imageUrl;
     }
     
@@ -502,24 +494,22 @@ public class ProductService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Image not found"));
         
-        // Delete file from filesystem
+        // Delete from Cloudinary
         try {
-            Path imagePath = Paths.get(UPLOAD_DIR + imageToRemove.getImageUrl().replace("/uploads/products/", ""));
-            if (Files.exists(imagePath)) {
-                Files.delete(imagePath);
-            }
+            cloudinaryService.deleteImage(imageToRemove.getImageUrl());
+            System.out.println("Image deleted from Cloudinary: " + imageToRemove.getImageUrl());
         } catch (IOException e) {
-            System.err.println("Failed to delete image file: " + e.getMessage());
+            System.err.println("Failed to delete image from Cloudinary: " + e.getMessage());
+            // Continue with database removal even if Cloudinary delete fails
         }
         
-        // Remove from product
+        // Remove from database
         product.getImages().remove(imageToRemove);
         product.setUpdatedAt(LocalDateTime.now());
         productRepository.save(product);
         
-        System.out.println("Image removed from product: " + product.getName());
+        System.out.println("Image record removed from database for product: " + product.getName());
     }
-    
     @Transactional(readOnly = true)
     public List<Product> searchProducts(String query) {
         return productRepository.findAll().stream()
