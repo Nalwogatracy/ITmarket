@@ -184,7 +184,7 @@ public class ProductController {
     @GetMapping("/categories")
     public ResponseEntity<?> getAllCategories() {
         try {
-            List<String> categories = productService.getAllCategories();
+            List<Product.ProductCategory> categories = productService.getAllCategories();
             return ResponseEntity.ok(categories);
             
         } catch (Exception e) {
@@ -211,36 +211,39 @@ public class ProductController {
         }
     }
     
+    // In your ProductController, fix the createProduct method:
+
     @PostMapping
     public ResponseEntity<?> createProduct(
             @RequestHeader("Authorization") String token,
             @RequestBody ProductRequest request) {
-        
+
         try {
             User currentUser = AuthInterceptor.getCurrentUser();
             if (currentUser == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
-            
+
             // Check if user is seller or admin
             boolean isSellerOrAdmin = currentUser.isSeller() || currentUser.isAdmin();
-            
+
             if (!isSellerOrAdmin) {
                 Map<String, String> error = new HashMap<>();
                 error.put("error", "Forbidden");
                 error.put("message", "Seller or admin access required");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
             }
-            
+
+            // Use Long userId (matching your User entity)
             Product product = productService.createProduct(request, currentUser.getId());
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Product created successfully");
             response.put("productId", product.getId());
             response.put("productName", product.getName());
-            
+
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
-            
+
         } catch (Exception e) {
             System.err.println("Error creating product: " + e.getMessage());
             Map<String, String> error = new HashMap<>();
@@ -249,57 +252,56 @@ public class ProductController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
-    
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateProduct(
-            @RequestHeader("Authorization") String token,
-            @PathVariable String id,
-            @RequestBody ProductRequest request) {
-        
-        try {
-            User currentUser = AuthInterceptor.getCurrentUser();
-            if (currentUser == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-            
-            Product product = productService.getProductById(id);
-            
-            // Check if user owns the product or is admin
-            boolean isOwner = product.getSeller() != null && 
-                             product.getSeller().getId().equals(currentUser.getId());
-            boolean isAdmin = currentUser.isAdmin();
-            
-            if (!isOwner && !isAdmin) {
+        @PutMapping("/{id}")
+        public ResponseEntity<?> updateProduct(
+                @RequestHeader("Authorization") String token,
+                @PathVariable String id,
+                @RequestBody ProductRequest request) {
+
+            try {
+                User currentUser = AuthInterceptor.getCurrentUser();
+                if (currentUser == null) {
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+                }
+
+                Product product = productService.getProductById(id);
+
+                // Check if user owns the product or is admin
+                boolean isOwner = product.getSeller() != null && 
+                                 product.getSeller().getId().equals(currentUser.getId());
+                boolean isAdmin = currentUser.isAdmin();
+
+                if (!isOwner && !isAdmin) {
+                    Map<String, String> error = new HashMap<>();
+                    error.put("error", "Forbidden");
+                    error.put("message", "You don't have permission to update this product");
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+                }
+
+                Product updatedProduct = productService.updateProduct(id, request);
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", "Product updated successfully");
+                response.put("productId", updatedProduct.getId());
+                response.put("productName", updatedProduct.getName());
+
+                return ResponseEntity.ok(response);
+
+            } catch (RuntimeException e) {
+                System.err.println("Error updating product: " + e.getMessage());
                 Map<String, String> error = new HashMap<>();
-                error.put("error", "Forbidden");
-                error.put("message", "You don't have permission to update this product");
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+                error.put("error", "Product not found");
+                error.put("message", e.getMessage());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            } catch (Exception e) {
+                System.err.println("Error updating product: " + e.getMessage());
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Failed to update product");
+                error.put("message", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
             }
-            
-            Product updatedProduct = productService.updateProduct(id, request);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "Product updated successfully");
-            response.put("productId", updatedProduct.getId());
-            response.put("productName", updatedProduct.getName());
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (RuntimeException e) {
-            System.err.println("Error updating product: " + e.getMessage());
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Product not found");
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-        } catch (Exception e) {
-            System.err.println("Error updating product: " + e.getMessage());
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to update product");
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
-    }
-    
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteProduct(
             @RequestHeader("Authorization") String token,

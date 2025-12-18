@@ -1,8 +1,6 @@
 package com.IT_market.controller;
 
-import com.IT_market.dto.LoginRequest;
-import com.IT_market.dto.LoginResponse;
-import com.IT_market.dto.RegisterRequest;
+import com.IT_market.dto.*;
 import com.IT_market.model.User;
 import com.IT_market.security.JwtTokenUtil;
 import com.IT_market.security.SessionManager;
@@ -10,13 +8,16 @@ import com.IT_market.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.ui.Model;
 
 @RestController
 @RequestMapping("/api/auth")
+
 public class AuthController {
     
     private final UserService userService;
@@ -30,8 +31,16 @@ public class AuthController {
     }
     
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, BindingResult bindingResult) {
         try {
+            // Validate input
+            if (bindingResult.hasErrors()) {
+                Map<String, String> errors = new HashMap<>();
+                bindingResult.getFieldErrors().forEach(error -> 
+                    errors.put(error.getField(), error.getDefaultMessage()));
+                return ResponseEntity.badRequest().body(errors);
+            }
+            
             User user = userService.authenticateUser(request.getUsername(), request.getPassword());
             String token = sessionManager.createSession(user);
             
@@ -46,7 +55,7 @@ public class AuthController {
                     user.getEmail(),
                     user.getFullName(),
                     roles,
-                    user.isBusiness()
+                    user.isBusinessAccount()
             );
             
             System.out.println("User logged in successfully: " + user.getUsername());
@@ -62,8 +71,16 @@ public class AuthController {
     }
     
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request, BindingResult bindingResult) {
         try {
+            // Validate input
+            if (bindingResult.hasErrors()) {
+                Map<String, String> errors = new HashMap<>();
+                bindingResult.getFieldErrors().forEach(error -> 
+                    errors.put(error.getField(), error.getDefaultMessage()));
+                return ResponseEntity.badRequest().body(errors);
+            }
+            
             User user = userService.registerUser(request);
             
             Map<String, Object> response = new HashMap<>();
@@ -71,6 +88,7 @@ public class AuthController {
             response.put("userId", user.getId());
             response.put("username", user.getUsername());
             response.put("email", user.getEmail());
+            response.put("accountType", request.getAccountType());
             
             System.out.println("User registered successfully: " + user.getUsername());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -85,8 +103,10 @@ public class AuthController {
     }
     
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@RequestHeader("Authorization") String token) {
-        sessionManager.invalidateSession(token);
+    public ResponseEntity<?> logout(@RequestHeader(value = "Authorization", required = false) String token) {
+        if (token != null && !token.isEmpty()) {
+            sessionManager.invalidateSession(token);
+        }
         
         System.out.println("User logged out");
         Map<String, String> response = new HashMap<>();
@@ -95,8 +115,8 @@ public class AuthController {
     }
     
     @GetMapping("/validate")
-    public ResponseEntity<?> validateToken(@RequestHeader("Authorization") String token) {
-        if (sessionManager.isValidSession(token)) {
+    public ResponseEntity<?> validateToken(@RequestHeader(value = "Authorization", required = false) String token) {
+        if (token != null && !token.isEmpty() && sessionManager.isValidSession(token)) {
             User user = sessionManager.getUserFromSession(token);
             
             Map<String, Object> response = new HashMap<>();
@@ -104,6 +124,11 @@ public class AuthController {
             response.put("userId", user.getId());
             response.put("username", user.getUsername());
             response.put("email", user.getEmail());
+            response.put("fullName", user.getFullName());
+            response.put("businessAccount", user.isBusinessAccount());
+            response.put("roles", user.getRoles().stream()
+                    .map(role -> role.getName().name())
+                    .toArray(String[]::new));
             
             return ResponseEntity.ok(response);
         }
@@ -112,5 +137,16 @@ public class AuthController {
         response.put("valid", false);
         response.put("message", "Invalid or expired token");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+    
+    @GetMapping("/login")
+    public String login() {
+        return "redirect:/";
+    }
+
+    @GetMapping("/register")
+    public String showRegistrationForm(Model model) {
+        model.addAttribute("user", new User());
+        return "redirect:/";
     }
 }

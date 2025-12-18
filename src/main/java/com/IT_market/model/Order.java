@@ -94,6 +94,8 @@ public class Order {
         SHIPPED,
         DELIVERED,
         CANCELLED,
+        REJECTED,
+        PAID,
         REFUNDED
     }
     

@@ -55,7 +55,9 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     @Query("SELECT p FROM Product p WHERE p.active = true ORDER BY p.viewCount DESC NULLS LAST")
     Page<Product> findMostViewedProducts(Pageable pageable);
     
-    @Query("SELECT p FROM Product p WHERE p.active = true AND p.createdAt >= CURRENT_DATE - :days ORDER BY p.viewCount DESC NULLS LAST")
+    @Query(value = "SELECT * FROM products WHERE active = true AND created_at >= CURRENT_TIMESTAMP - (CAST(:days AS text) || ' days')::interval ORDER BY view_count DESC", 
+       countQuery = "SELECT COUNT(*) FROM products WHERE active = true AND created_at >= CURRENT_TIMESTAMP - (CAST(:days AS text) || ' days')::interval",
+       nativeQuery = true)
     Page<Product> findTrendingProducts(@Param("days") int days, Pageable pageable);
     
     @Query("SELECT SUM(p.viewCount) FROM Product p")
@@ -66,4 +68,10 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     
     @Query("SELECT p FROM Product p WHERE p.active = true AND p.viewCount >= :threshold")
     List<Product> findPopularProducts(@Param("threshold") int threshold);
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.active = true AND p.stockQuantity <= :threshold")
+    long countLowStockProducts(@Param("threshold") int threshold);
+
+    @Query("SELECT p FROM Product p WHERE p.active = true AND p.stockQuantity = 0")
+    List<Product> findOutOfStockProducts();
+
 }

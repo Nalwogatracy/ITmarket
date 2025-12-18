@@ -19,7 +19,13 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns("*")
+                .allowedOriginPatterns(
+                      "http://localhost:8080",    // Your Spring Boot server\n" +
+                       "http://localhost:3000",    // React/Vue dev server\n" +
+                       "http://127.0.0.1:8080",    // Alternative localhost\n" +
+                       "http://127.0.0.1:3000",    // Alternative dev server\n" +
+                       "http://localhost:5500",     // Live Server extension\n" +
+                       "file://")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .exposedHeaders("Authorization")

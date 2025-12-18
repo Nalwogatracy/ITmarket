@@ -44,4 +44,16 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     Optional<Order> findByIdAndCustomerEmail(String id, String email);
     
     List<Order> findByStatus(Order.OrderStatus status);
+    long countByStatus(Order.OrderStatus status);
+
+    @Query("SELECT o FROM Order o ORDER BY o.createdAt DESC")
+    List<Order> findRecentOrders(Pageable pageable);
+
+    @Query("SELECT o FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate")
+    List<Order> findByOrderDateBetween(@Param("startDate") LocalDateTime startDate, 
+                                       @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate")
+    long countByOrderDateBetween(@Param("startDate") LocalDateTime startDate, 
+                                @Param("endDate") LocalDateTime endDateTime);
 }

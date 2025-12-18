@@ -9,10 +9,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 @Service
 public class OrderService {
@@ -60,6 +69,7 @@ public class OrderService {
         
         return order;
     }
+    
     
     private Order buildGuestOrder(GuestOrderRequest request) {
         // Calculate order items and total
@@ -205,4 +215,146 @@ public class OrderService {
         
         return order;
     }
+    
+
+    @Transactional(readOnly = true)
+    public long countAllOrders() {
+        return orderRepository.count();
+    }
+    @Transactional(readOnly = true)
+    public List<Order> getOrderByStatus(Order.OrderStatus status) {
+        return orderRepository.findByStatus(status);
+    }
+
+    @Transactional(readOnly = true)
+    public long countOrdersByStatus(Order.OrderStatus status) {
+        return orderRepository.countByStatus(status);
+    }
+
+    @Transactional(readOnly = true)
+
+    public List<Order> getRecentOrders(int limit) {
+        Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt")); // ✅ Correct
+        return orderRepository.findAll(pageable).getContent();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, BigDecimal> getSalesSummary(LocalDate startDate, LocalDate endDate) {
+        Map<String, BigDecimal> salesData = new LinkedHashMap<>();
+
+        // Get orders within date range
+        List<Order> orders = orderRepository.findByOrderDateBetween(
+            startDate.atStartOfDay(),
+            endDate.atTime(23, 59, 59)
+        );
+
+        // Group by day
+        for (Order order : orders) {
+            if (order.getStatus() == Order.OrderStatus.DELIVERED || 
+                order.getStatus() == Order.OrderStatus.PAID) {
+                String dateKey = order.getCreatedAt().toLocalDate().toString();
+                BigDecimal currentAmount = salesData.getOrDefault(dateKey, BigDecimal.ZERO);
+                salesData.put(dateKey, currentAmount.add(order.getTotalAmount()));
+            }
+        }
+
+        // Fill missing dates with zero
+        LocalDate currentDate = startDate;
+        while (!currentDate.isAfter(endDate)) {
+            String dateKey = currentDate.toString();
+            salesData.putIfAbsent(dateKey, BigDecimal.ZERO);
+            currentDate = currentDate.plusDays(1);
+        }
+
+        return salesData;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getSalesReport(LocalDate startDate, LocalDate endDate) {
+        Map<String, Object> report = new HashMap<>();
+
+        // Get all orders in date range
+        List<Order> orders = orderRepository.findByOrderDateBetween(
+            startDate.atStartOfDay(),
+            endDate.atTime(23, 59, 59)
+        );
+
+        // Calculate totals
+        BigDecimal totalSales = orders.stream()
+            .filter(order -> order.getStatus() == Order.OrderStatus.DELIVERED || 
+                            order.getStatus() == Order.OrderStatus.PAID)
+            .map(Order::getTotalAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        long totalOrdersCount = orders.size();
+        long completedOrders = orders.stream()
+            .filter(order -> order.getStatus() == Order.OrderStatus.DELIVERED)
+            .count();
+
+        BigDecimal averageOrderValue = totalOrdersCount > 0 ? 
+            totalSales.divide(BigDecimal.valueOf(totalOrdersCount), 2, RoundingMode.HALF_UP) : 
+            BigDecimal.ZERO;
+
+        // Popular payment methods
+        Map<String, Long> paymentMethodCounts = orders.stream()
+            .collect(Collectors.groupingBy(
+                order -> order.getPaymentMethod().name(),
+                Collectors.counting()
+            ));
+
+        report.put("totalSales", totalSales);
+        report.put("totalOrders", totalOrdersCount);
+        report.put("completedOrders", completedOrders);
+        report.put("averageOrderValue", averageOrderValue);
+        report.put("paymentMethodDistribution", paymentMethodCounts);
+        report.put("startDate", startDate);
+        report.put("endDate", endDate);
+
+        return report;
+    }
+    
+    // Add these methods to your OrderService class
+
+    @Transactional(readOnly = true)
+    public List<Order> getAllOrders() {
+        return orderRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Order> getOrdersByStatus(Order.OrderStatus status) {
+        return orderRepository.findByStatus(status);
+    }
+
+    @Transactional
+    public void approveOrder(String id) {
+        Order order = getOrderById(id.toString()); // Note: Your order ID is String
+        order.setStatus(Order.OrderStatus.CONFIRMED);
+        //order.setApprovedAt(LocalDateTime.now());
+        orderRepository.save(order);
+
+        // Send notification
+        notificationService.createOrderStatusNotification(order);
+    }
+
+    @Transactional
+    public void rejectOrder(Long id, String reason) {
+        Order order = getOrderById(id.toString()); // Note: Your order ID is String
+        order.setStatus(Order.OrderStatus.REJECTED);
+        //order.setCancelledAt(LocalDateTime.now());
+        //order.setCancellationReason(reason);
+        orderRepository.save(order);
+
+        // Send notification
+        notificationService.createOrderStatusNotification(order);
+    }
+
+
+    // Helper method to get order by Long id (converting to String)
+    private Order getOrderById(Long id) {
+        // This assumes you have a way to convert Long id to your String order ID
+        // If not, you might need to store Long IDs separately
+        return getOrderById(id.toString());
+    }
+
+
 }

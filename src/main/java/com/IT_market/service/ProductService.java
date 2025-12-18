@@ -2,6 +2,7 @@ package com.IT_market.service;
 
 import com.IT_market.dto.ProductRequest;
 import com.IT_market.model.Product;
+import com.IT_market.model.Product.ProductCategory;
 import com.IT_market.model.ProductImage;
 import com.IT_market.model.User;
 import com.IT_market.repository.ProductRepository;
@@ -26,6 +27,9 @@ import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import com.IT_market.service.CloudinaryService;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductService {
@@ -34,6 +38,7 @@ public class ProductService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final CloudinaryService cloudinaryService;
+    private Object approved;
     
     
     public ProductService(ProductRepository productRepository,
@@ -44,7 +49,9 @@ public class ProductService {
     this.cloudinaryService = cloudinaryService; // ← ADD THIS LINE
     this.userRepository = userRepository;
     this.fileStorageService = fileStorageService;
+    
     }
+    
     
     @Transactional
     public void updateProductViews(String productId) {
@@ -84,6 +91,8 @@ public class ProductService {
         return productRepository.findMostViewedProducts(pageable);
     }
     
+    
+    
     @Transactional(readOnly = true)
     public Page<Product> getTrendingProducts(int days, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("viewCount").descending());
@@ -93,6 +102,30 @@ public class ProductService {
     @Transactional(readOnly = true)
     public List<Product> getPopularProducts(int threshold) {
         return productRepository.findPopularProducts(threshold);
+    }
+    
+    private String getCategoryDisplayName(ProductCategory category) {
+        if (category == null) return "Uncategorized";
+        
+        switch (category) {
+            case LAPTOP:
+                return "💻 Laptops & Computers";
+            case PHONE:
+                return "📱 Phones & Tablets";
+            case NETWORKING:
+                return "🌐 Networking Equipment";
+            case ACCESSORIES:
+                return "🖱️ Accessories & Peripherals";
+            case SOFTWARE:
+                return "💿 Software & Licenses";
+            case OTHER:
+                return "📦 Other IT Products";
+            default:
+                // Convert "SOME_CATEGORY" to "Some Category"
+                return Arrays.stream(category.name().split("_"))
+                        .map(word -> word.charAt(0) + word.substring(1).toLowerCase())
+                        .collect(Collectors.joining(" "));
+        }
     }
     
     @Transactional(readOnly = true)
@@ -122,16 +155,30 @@ public class ProductService {
             stats.put("topViewedProducts", topProducts);
             
             // Get view distribution by category
+            // Get view distribution by category - WITH PROPER FORMATTING
             Map<String, Long> viewsByCategory = new HashMap<>();
+            Map<String, String> categoryDisplayNames = new HashMap<>();
+
             productRepository.findAll().stream()
-                    .filter(Product::isActive)
-                    .forEach(product -> {
-                        String category = product.getCategory();
-                        int views = product.getViewCount() != null ? product.getViewCount() : 0;
-                        viewsByCategory.put(category, viewsByCategory.getOrDefault(category, 0L) + views);
-                    });
-            
+                .filter(Product::isActive)
+                .forEach(product -> {
+                    Product.ProductCategory category = product.getCategory();
+
+                    // Get human-readable display name
+                    String displayName = getCategoryDisplayName(category);
+
+                    // Store the proper display name
+                    categoryDisplayNames.put(category.name(), displayName);
+
+                    int views = product.getViewCount() != null ? product.getViewCount() : 0;
+
+                    // Use the beautiful display name as the key
+                    viewsByCategory.put(displayName, 
+                        viewsByCategory.getOrDefault(displayName, 0L) + views);
+                });
+
             stats.put("viewsByCategory", viewsByCategory);
+            stats.put("categoryDisplayNames", categoryDisplayNames);
             
             // Get today's views (simplified - in production you'd have a separate view tracking table)
             long todayViews = productRepository.findAll().stream()
@@ -338,7 +385,7 @@ public class ProductService {
         
         Product product = new Product();
         product.setName(request.getName());
-        product.setCategory(request.getCategory());
+        product.setCategory((Product.ProductCategory) request.getCategory());
         product.setSubCategory(request.getSubCategory());
         product.setBrand(request.getBrand());
         product.setDescription(request.getDescription());
@@ -368,7 +415,7 @@ public class ProductService {
         Product product = getProductById(id);
         
         product.setName(request.getName());
-        product.setCategory(request.getCategory());
+        product.setCategory((Product.ProductCategory) request.getCategory());
         product.setSubCategory(request.getSubCategory());
         product.setBrand(request.getBrand());
         product.setDescription(request.getDescription());
@@ -596,7 +643,7 @@ public class ProductService {
     }
     
     @Transactional(readOnly = true)
-    public List<String> getAllCategories() {
+    public List<Product.ProductCategory> getAllCategories() {
         return productRepository.findAll().stream()
                 .filter(Product::isActive)
                 .map(Product::getCategory)
@@ -625,4 +672,149 @@ public class ProductService {
                 .sorted()
                 .toList();
     }
+    
+    // ============== ADDITIONAL METHODS NEEDED ==============
+
+    @Transactional(readOnly = true)
+    public List<Product> getAllProducts() {
+        return productRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Product> getProductsByCategory(String category) {
+        try {
+            Product.ProductCategory categoryEnum = Product.ProductCategory.valueOf(category.toUpperCase());
+            return productRepository.findAll().stream()
+                    .filter(product -> product.getCategory() == categoryEnum && product.isActive())
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            return new ArrayList<>();
+        }
+    }
+
+
+
+    @Transactional(readOnly = true)
+    public List<Product> getOutOfStockProducts() {
+        return productRepository.findAll().stream()
+                .filter(product -> product.isActive() && 
+                        (product.getStockQuantity() == null || product.getStockQuantity() == 0))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> getCategorySales() {
+        Map<String, Long> categorySales = new HashMap<>();
+
+        productRepository.findAll().stream()
+                .filter(Product::isActive)
+                .forEach(product -> {
+                    String category = product.getCategory().name();
+                    long soldCount = product.getSoldCount() != null ? product.getSoldCount() : 0L;
+                    categorySales.put(category, categorySales.getOrDefault(category, 0L) + soldCount);
+                });
+
+        return categorySales;
+    }
+    
+    // Add these methods to your ProductService class
+
+    @Transactional(readOnly = true)
+    public long countAllProducts() {
+        return productRepository.count();
+    }
+
+    @Transactional(readOnly = true)
+    public long countActiveProducts() {
+        return productRepository.countActiveProducts();
+    }
+
+    @Transactional(readOnly = true)
+    public long countLowStockProducts(int threshold) {
+        return productRepository.findAll().stream()
+                .filter(product -> product.isActive() && 
+                        (product.getStockQuantity() != null && product.getStockQuantity() <= threshold))
+                .count();
+    }
+
+    @Transactional(readOnly = true)
+    public long countPendingProducts() {
+        // Assuming you have an 'approved' field or similar
+        return productRepository.findAll().stream()
+                .filter(product -> !product.isApproved())
+                .count();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Product> getPendingProducts() {
+        return productRepository.findAll().stream()
+                .filter(product -> !product.isApproved())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public BigDecimal calculateInventoryValue() {
+        return getTotalInventoryValue(); // You already have this method
+    }
+
+    @Transactional
+    public void saveProduct(Product product) {
+        if (product.getId() == null) {
+            product.setId(UUID.randomUUID().toString());
+        }
+        product.setCreatedAt(LocalDateTime.now());
+        product.setUpdatedAt(LocalDateTime.now());
+        productRepository.save(product);
+    }
+
+    @Transactional
+    public void updateProduct(String id, Product productUpdates) {
+        Product product = getProductById(id);
+
+        // Update fields if they're not null in productUpdates
+        if (productUpdates.getName() != null) {
+            product.setName(productUpdates.getName());
+        }
+        if (productUpdates.getCategory() != null) {
+            product.setCategory(productUpdates.getCategory());
+        }
+        if (productUpdates.getBrand() != null) {
+            product.setBrand(productUpdates.getBrand());
+        }
+        if (productUpdates.getDescription() != null) {
+            product.setDescription(productUpdates.getDescription());
+        }
+        if (productUpdates.getPrice() != null) {
+            product.setPrice(productUpdates.getPrice());
+        }
+        if (productUpdates.getOriginalPrice() != null) {
+            product.setOriginalPrice(productUpdates.getOriginalPrice());
+        }
+        if (productUpdates.getStockQuantity() != null) {
+            product.setStockQuantity(productUpdates.getStockQuantity());
+        }
+        if (productUpdates.getSku() != null) {
+            product.setSku(productUpdates.getSku());
+        }
+        if (productUpdates.isApproved() != product.isApproved()) {
+            product.setApproved(productUpdates.isApproved());
+        }
+        if (productUpdates.isFeatured() != product.isFeatured()) {
+            product.setFeatured(productUpdates.isFeatured());
+        }
+        if (productUpdates.isAvailable() != product.isAvailable()) {
+            product.setAvailable(productUpdates.isAvailable());
+        }
+
+        product.setUpdatedAt(LocalDateTime.now());
+        productRepository.save(product);
+    }
+
+    // Helper method to check if product is approved
+    // Add this to your Product model if it doesn't exist
+    public Object isApproved() {
+        // Assuming you have an 'approved' field in Product
+        // If not, you'll need to add it or use another field
+        return this.approved != null ? this.approved : true;
+    } 
 }

@@ -1,9 +1,6 @@
 package com.IT_market.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -20,54 +17,66 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @NotBlank
-    @Size(max = 50)
+    @Column(nullable = false, unique = true)
     private String username;
     
-    @NotBlank
-    @Size(max = 100)
-    private String fullName;
+    @Column(name = "first_name", nullable = false)
+    private String firstName;
     
-    @NotBlank
-    @Size(max = 100)
-    @Email
+    @Column(name = "last_name", nullable = false)
+    private String lastName;
+    
+    @Column(nullable = false, unique = true)
     private String email;
     
-    @NotBlank
-    @Size(max = 120)
+    @Column(nullable = false)
     private String password;
     
-    @Size(max = 20)
     private String phoneNumber;
     
-    private String companyName;
+    // Account type: BUYER, SELLER, ADMIN
+    private String role = "BUYER";
     
-    @Size(max = 500)
-    private String address;
+    private boolean enabled = true;
     
-    @Column(name = "is_business")
-    private boolean business = false;
+    // ADDED: For LoginResponse compatibility
+    @Column(name = "business_account")
+    private boolean businessAccount = false;
     
-    @Column(name = "is_verified")
+    // ADDED: For tracking last login
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
+    
+    // ADDED: Verification status
     private boolean verified = false;
     
-    @Column(name = "is_active")
-    private boolean active = true;
+    // Seller-specific fields (for SELLER role)
+    private String companyName;
     
+    @Column(name = "seller_type")
+    private String sellerType; // INDIVIDUAL or BUSINESS
+    
+    @Column(name = "business_type")
+    private String businessType;
+    
+    @Column(name = "tax_id")
+    private String taxId;
+    
+    @Column(name = "business_address", columnDefinition = "TEXT")
+    private String businessAddress;
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    // Relationships
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "user_roles",
                joinColumns = @JoinColumn(name = "user_id"),
                inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
-    
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-    
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-    
-    @Column(name = "last_login")
-    private LocalDateTime lastLogin;
     
     // Constructors
     public User() {
@@ -75,155 +84,102 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
     
-    public User(String username, String fullName, String email, String password) {
+    public User(String firstName, String lastName, String username, String email, String password) {
         this();
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.username = username;
-        this.fullName = fullName;
         this.email = email;
         this.password = password;
     }
     
     // Getters and Setters
-    public Long getId() {
-        return id;
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
+    
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
+    
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+    
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+    
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+    
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    
+    // ADDED: businessAccount getter and setter
+    public boolean isBusinessAccount() { return businessAccount; }
+    public void setBusinessAccount(boolean businessAccount) { 
+        this.businessAccount = businessAccount; 
     }
     
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public boolean isUser() {
+    return "BUYER".equals(role) || 
+           roles.stream().anyMatch(role -> 
+               role.getName() == Role.RoleName.ROLE_USER);
+}
     
-    public String getUsername() {
-        return username;
-    }
+    // ADDED: lastLogin getter and setter
+    public LocalDateTime getLastLogin() { return lastLogin; }
+    public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
     
-    public void setUsername(String username) {
-        this.username = username;
+    // ADDED: verified getter and setter
+    public boolean isVerified() { return verified; }
+    public void setVerified(boolean verified) { this.verified = verified; }
+    
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
+    
+    public String getSellerType() { return sellerType; }
+    public void setSellerType(String sellerType) { this.sellerType = sellerType; }
+    
+    public String getBusinessType() { return businessType; }
+    public void setBusinessType(String businessType) { this.businessType = businessType; }
+    
+    public String getTaxId() { return taxId; }
+    public void setTaxId(String taxId) { this.taxId = taxId; }
+    
+    public String getBusinessAddress() { return businessAddress; }
+    public void setBusinessAddress(String businessAddress) { this.businessAddress = businessAddress; }
+    
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    
+    public Set<Role> getRoles() { return roles; }
+    public void setRoles(Set<Role> roles) { this.roles = roles; }
+    
+    // Helper methods
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
     
     public String getFullName() {
-        return fullName;
-    }
-    
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-    
-    public String getEmail() {
-        return email;
-    }
-    
-    public void setEmail(String email) {
-        this.email = email;
-    }
-    
-    public String getPassword() {
-        return password;
-    }
-    
-    public void setPassword(String password) {
-        this.password = password;
-    }
-    
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-    
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
-    
-    public String getCompanyName() {
-        return companyName;
-    }
-    
-    public void setCompanyName(String companyName) {
-        this.companyName = companyName;
-    }
-    
-    public String getAddress() {
-        return address;
-    }
-    
-    public void setAddress(String address) {
-        this.address = address;
-    }
-    
-    public boolean isBusiness() {
-        return business;
-    }
-    
-    public void setBusiness(boolean business) {
-        this.business = business;
-    }
-    
-    public boolean isVerified() {
-        return verified;
-    }
-    
-    public void setVerified(boolean verified) {
-        this.verified = verified;
-    }
-    
-    public boolean isActive() {
-        return active;
-    }
-    
-    public void setActive(boolean active) {
-        this.active = active;
-    }
-    
-    public Set<Role> getRoles() {
-        return roles;
-    }
-    
-    public void setRoles(Set<Role> roles) {
-        this.roles = roles;
-    }
-    
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-    
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-    
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-    
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-    
-    public LocalDateTime getLastLogin() {
-        return lastLogin;
-    }
-    
-    public void setLastLogin(LocalDateTime lastLogin) {
-        this.lastLogin = lastLogin;
-    }
-    
-    // Helper methods
-    public void addRole(Role role) {
-        this.roles.add(role);
-    }
-    
-    public boolean hasRole(String roleName) {
-        return this.roles.stream()
-                .anyMatch(role -> role.getName().name().equals(roleName));
-    }
-    
-    public boolean isAdmin() {
-        return hasRole("ROLE_ADMIN");
+        return firstName + " " + lastName;
     }
     
     public boolean isSeller() {
-        return hasRole("ROLE_SELLER");
+        return "SELLER".equals(role) || "ADMIN".equals(role);
     }
     
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+    public boolean isAdmin() {
+        return "ADMIN".equals(role);
     }
 }

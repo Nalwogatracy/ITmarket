@@ -14,10 +14,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     Boolean existsByUsername(String username);
     Boolean existsByEmail(String email);
+    Optional<User> findByIdAndActiveTrue(Long id);
+    boolean existsByUsernameAndActiveTrue(String username);
+    boolean existsByEmailAndActiveTrue(String email);
     
     @Query("SELECT COUNT(u) FROM User u WHERE u.createdAt >= ?1")
     Long countByCreatedAtAfter(LocalDateTime date);
     
     @Query("SELECT COUNT(u) FROM User u WHERE u.business = true")
     Long countBusinessUsers();
+    
+    
 }

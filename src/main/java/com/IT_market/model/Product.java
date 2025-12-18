@@ -17,8 +17,9 @@ public class Product {
     @Column(nullable = false, length = 200)
     private String name;
     
-    @Column(nullable = false, length = 100)
-    private String category;
+    @Enumerated(EnumType.STRING)
+    private ProductCategory category;
+    
     
     @Column(length = 100)
     private String subCategory;
@@ -81,6 +82,25 @@ public class Product {
     
      @Column(name = "view_count")
     private Integer viewCount = 0;
+     
+     private boolean approved = true;
+
+    public boolean isApproved() {
+        return approved;
+    }
+
+    public void setApproved(boolean approved) {
+        this.approved = approved;
+    }
+
+    public boolean isAvailable() {
+        return available;
+    }
+
+    public void setAvailable(boolean available) {
+        this.available = available;
+    }
+    private boolean available = true;
 
     public Integer getViewCount() {
         return viewCount;
@@ -99,7 +119,7 @@ public class Product {
         this.updatedAt = LocalDateTime.now();
     }
     
-    public Product(String name, String category, String description, BigDecimal price) {
+    public Product(String name, ProductCategory category, String description, BigDecimal price) {
         this();
         this.name = name;
         this.category = category;
@@ -124,11 +144,11 @@ public class Product {
         this.name = name;
     }
     
-    public String getCategory() {
+    public ProductCategory getCategory() {
         return category;
     }
     
-    public void setCategory(String category) {
+    public void setCategory(ProductCategory category) {
         this.category = category;
     }
     
@@ -312,5 +332,20 @@ public class Product {
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+    public enum ProductCategory {
+        LAPTOP, PHONE, NETWORKING, ACCESSORIES, SOFTWARE, OTHER
+    }
+    @Enumerated(EnumType.STRING)
+    private ProductCondition condition;
+    public enum ProductCondition {
+        NEW, REFURBISHED, USED_GOOD, USED_FAIR
+    }
+    public ProductCondition getCondition() {
+    return condition;
+    }
+
+    public void setCondition(ProductCondition condition) {
+        this.condition = condition;
     }
 }

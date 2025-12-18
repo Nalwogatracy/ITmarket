@@ -1,0 +1,727 @@
+<!-- File: src/main/resources/templates/admin/sell-requests.html -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{admin/layout :: layout(~{::content})}">
+<head>
+    <title>Sell Requests Management</title>
+    <style>
+        .status-badge {
+            font-size: 0.85em;
+            padding: 0.35em 0.65em;
+        }
+        .price-cell {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .negotiation-badge {
+            background-color: #17a2b8;
+            color: white;
+        }
+        .action-buttons {
+            white-space: nowrap;
+        }
+        .request-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        .request-card.pending {
+            border-left-color: #ffc107;
+        }
+        .request-card.negotiating {
+            border-left-color: #17a2b8;
+        }
+        .request-card.approved {
+            border-left-color: #28a745;
+        }
+        .request-card.rejected {
+            border-left-color: #dc3545;
+        }
+        .filter-badge {
+            cursor: pointer;
+        }
+        .filter-badge.active {
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div th:fragment="content">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-exchange-alt text-primary"></i> 
+                    Sell Requests Management
+                </h1>
+                <p class="text-muted mb-0">Review and process items people want to sell to the company</p>
+            </div>
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <span class="badge bg-warning fs-6">
+                        <i class="fas fa-clock"></i> 
+                        <span th:text="${pendingCount}">0</span> Pending
+                    </span>
+                </div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#statsModal">
+                    <i class="fas fa-chart-bar"></i> View Stats
+                </button>
+            </div>
+        </div>
+
+        <!-- Quick Stats Bar -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">TOTAL REQUESTS</h6>
+                                <h4 class="mb-0" th:text="${totalRequests}">0</h4>
+                            </div>
+                            <i class="fas fa-list-alt fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">APPROVED</h6>
+                                <h4 class="mb-0" th:text="${approvedCount}">0</h4>
+                            </div>
+                            <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">NEGOTIATING</h6>
+                                <h4 class="mb-0" th:text="${negotiatingCount}">0</h4>
+                            </div>
+                            <i class="fas fa-handshake fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">REJECTED</h6>
+                                <h4 class="mb-0" th:text="${rejectedCount}">0</h4>
+                            </div>
+                            <i class="fas fa-times-circle fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge filter-badge bg-primary" 
+                                  onclick="filterRequests('all')">All</span>
+                            <span class="badge filter-badge bg-warning" 
+                                  onclick="filterRequests('PENDING')">Pending</span>
+                            <span class="badge filter-badge bg-info" 
+                                  onclick="filterRequests('NEGOTIATING')">Negotiating</span>
+                            <span class="badge filter-badge bg-success" 
+                                  onclick="filterRequests('APPROVED')">Approved</span>
+                            <span class="badge filter-badge bg-danger" 
+                                  onclick="filterRequests('REJECTED')">Rejected</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <input type="text" class="form-control" 
+                                   placeholder="Search requests..." 
+                                   id="searchInput" onkeyup="searchRequests()">
+                            <button class="btn btn-outline-secondary" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sell Requests Table -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">All Sell Requests</h5>
+                <div class="text-muted">
+                    <span th:text="${sellRequests.size()}">0</span> requests found
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th width="50">ID</th>
+                                <th>Item Details</th>
+                                <th>Seller</th>
+                                <th>Price</th>
+                                <th>Status</th>
+                                <th>Submitted</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="request : ${sellRequests}" 
+                                th:classappend="'request-card ' + ${request.status.name().toLowerCase()}">
+                                <td>
+                                    <strong th:text="'#' + ${request.id}">#1</strong>
+                                </td>
+                                <td>
+                                    <div class="fw-bold" th:text="${request.itemName}">
+                                        MacBook Pro M2
+                                    </div>
+                                    <small class="text-muted d-block" 
+                                           th:text="${request.itemDescription}">
+                                        2023 Model, 16GB RAM, 512GB SSD
+                                    </small>
+                                    <div class="mt-1">
+                                        <span class="badge bg-light text-dark me-1" 
+                                              th:text="${request.itemCategory}">
+                                            LAPTOP
+                                        </span>
+                                        <span class="badge bg-light text-dark" 
+                                              th:text="${request.itemCondition}">
+                                            NEW
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div th:text="${request.user.username}">john_doe</div>
+                                    <small class="text-muted d-block" 
+                                           th:text="${request.user.email}">
+                                        john@example.com
+                                    </small>
+                                </td>
+                                <td class="price-cell">
+                                    <div>
+                                        <strong th:text="${#numbers.formatCurrency(request.expectedPrice)}">
+                                            UGX 2,500,000
+                                        </strong>
+                                        <div class="text-muted">Expected</div>
+                                    </div>
+                                    <div th:if="${request.negotiatedPrice}" class="mt-1">
+                                        <strong class="text-info" 
+                                                th:text="${#numbers.formatCurrency(request.negotiatedPrice)}">
+                                            UGX 2,200,000
+                                        </strong>
+                                        <div class="text-muted">Negotiated</div>
+                                    </div>
+                                    <div th:if="${request.finalPrice}" class="mt-1">
+                                        <strong class="text-success" 
+                                                th:text="${#numbers.formatCurrency(request.finalPrice)}">
+                                            UGX 2,200,000
+                                        </strong>
+                                        <div class="text-muted">Final</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span th:classappend="'badge status-badge bg-' + ${request.statusColor}" 
+                                          th:text="${request.status.displayName}">
+                                        Pending Review
+                                    </span>
+                                    <div th:if="${request.reviewedBy}" class="mt-1 small">
+                                        <i class="fas fa-user-check text-muted"></i>
+                                        <span th:text="${request.reviewedBy.username}">admin</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div th:text="${#dates.format(request.submittedAt, 'dd/MM/yyyy')}">
+                                        15/01/2024
+                                    </div>
+                                    <small class="text-muted" 
+                                           th:text="${#dates.format(request.submittedAt, 'HH:mm')}">
+                                        14:30
+                                    </small>
+                                </td>
+                                <td class="action-buttons">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <!-- View Details Button -->
+                                        <button type="button" class="btn btn-outline-primary"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#detailsModal"
+                                                th:data-request-id="${request.id}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        
+                                        <!-- Pending Requests: Approve/Reject/Negotiate -->
+                                        <th:block th:if="${request.status.name() == 'PENDING'}">
+                                            <button type="button" class="btn btn-outline-success"
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#approveModal"
+                                                    th:data-request-id="${request.id}"
+                                                    th:data-item-name="${request.itemName}"
+                                                    th:data-expected-price="${request.expectedPrice}">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-warning"
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#negotiateModal"
+                                                    th:data-request-id="${request.id}"
+                                                    th:data-item-name="${request.itemName}"
+                                                    th:data-expected-price="${request.expectedPrice}">
+                                                <i class="fas fa-handshake"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger"
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#rejectModal"
+                                                    th:data-request-id="${request.id}"
+                                                    th:data-item-name="${request.itemName}">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </th:block>
+                                        
+                                        <!-- Negotiating Requests: Finalize -->
+                                        <th:block th:if="${request.status.name() == 'NEGOTIATING'}">
+                                            <button type="button" class="btn btn-outline-success"
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#finalizeModal"
+                                                    th:data-request-id="${request.id}"
+                                                    th:data-item-name="${request.itemName}"
+                                                    th:data-negotiated-price="${request.negotiatedPrice}">
+                                                Finalize
+                                            </button>
+                                        </th:block>
+                                        
+                                        <!-- Approved Requests: Mark Complete -->
+                                        <th:block th:if="${request.status.name() == 'APPROVED'}">
+                                            <form th:action="@{/admin/sell-requests/{id}/complete(id=${request.id})}" 
+                                                  method="post" style="display: inline;">
+                                                <button type="submit" class="btn btn-outline-info">
+                                                    Complete
+                                                </button>
+                                            </form>
+                                        </th:block>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <!-- No Requests Message -->
+                            <tr th:if="${sellRequests.empty}">
+                                <td colspan="7" class="text-center py-4">
+                                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">No Sell Requests Found</h5>
+                                    <p class="text-muted">When people submit items to sell, they'll appear here.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="text-muted">
+                        Showing <span th:text="${sellRequests.size()}">0</span> requests
+                    </div>
+                    <div th:if="${totalPages > 1}">
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0">
+                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                    <a class="page-link" th:href="@{/admin/sell-requests(page=0)}">First</a>
+                                </li>
+                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                    <a class="page-link" th:href="@{/admin/sell-requests(page=${currentPage-1})}">Prev</a>
+                                </li>
+                                <li class="page-item" th:each="i : ${#numbers.sequence(1, totalPages)}"
+                                    th:classappend="${currentPage+1 == i} ? 'active'">
+                                    <a class="page-link" th:href="@{/admin/sell-requests(page=${i-1})}" 
+                                       th:text="${i}">1</a>
+                                </li>
+                                <li class="page-item" th:classappend="${currentPage+1 == totalPages} ? 'disabled'">
+                                    <a class="page-link" th:href="@{/admin/sell-requests(page=${currentPage+1})}">Next</a>
+                                </li>
+                                <li class="page-item" th:classappend="${currentPage+1 == totalPages} ? 'disabled'">
+                                    <a class="page-link" th:href="@{/admin/sell-requests(page=${totalPages-1})}">Last</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modals for Actions -->
+        
+        <!-- Details Modal -->
+        <div class="modal fade" id="detailsModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Sell Request Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="requestDetails">
+                        <!-- AJAX content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Approve Modal -->
+        <div class="modal fade" id="approveModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="approveForm" method="post">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Approve Sell Request</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>You are about to approve the sale of:</p>
+                            <p class="fw-bold" id="approveItemName">Item Name</p>
+                            <div class="mb-3">
+                                <label for="finalPrice" class="form-label">Final Price</label>
+                                <input type="number" class="form-control" id="finalPrice" 
+                                       name="finalPrice" step="0.01" min="0" required>
+                                <div class="form-text">
+                                    Expected price: <span id="expectedPriceDisplay">UGX 0</span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="adminNotes" class="form-label">Admin Notes (Optional)</label>
+                                <textarea class="form-control" id="adminNotes" 
+                                          name="adminNotes" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success">Approve Request</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Negotiate Modal -->
+        <div class="modal fade" id="negotiateModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="negotiateForm" method="post" 
+                          th:action="@{/admin/sell-requests/{id}/negotiate}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Start Price Negotiation</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Make an offer for:</p>
+                            <p class="fw-bold" id="negotiateItemName">Item Name</p>
+                            <div class="mb-3">
+                                <label for="offeredPrice" class="form-label">Your Offer</label>
+                                <input type="number" class="form-control" id="offeredPrice" 
+                                       name="offeredPrice" step="0.01" min="0" required>
+                                <div class="form-text">
+                                    Seller's expected price: <span id="negotiateExpectedPrice">UGX 0</span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="negotiationNotes" class="form-label">Message to Seller</label>
+                                <textarea class="form-control" id="negotiationNotes" 
+                                          name="negotiationNotes" rows="3" required
+                                          placeholder="Explain your offer to the seller..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-warning">Send Offer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reject Modal -->
+        <div class="modal fade" id="rejectModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="rejectForm" method="post">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Reject Sell Request</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>You are about to reject the sale of:</p>
+                            <p class="fw-bold" id="rejectItemName">Item Name</p>
+                            <div class="mb-3">
+                                <label for="rejectionReason" class="form-label">Reason for Rejection</label>
+                                <textarea class="form-control" id="rejectionReason" 
+                                          name="reason" rows="3" required
+                                          placeholder="Please provide a clear reason for rejection..."></textarea>
+                                <div class="form-text">
+                                    This message will be sent to the seller.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger">Reject Request</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stats Modal -->
+        <div class="modal fade" id="statsModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Sell Request Statistics</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Status Distribution</h6>
+                                <canvas id="statusChart" height="200"></canvas>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Category Distribution</h6>
+                                <canvas id="categoryChart" height="200"></canvas>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 th:text="${totalValue != null ? #numbers.formatCurrency(totalValue) : 'UGX 0'}">
+                                            UGX 0
+                                        </h3>
+                                        <p class="text-muted mb-0">Total Value</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 th:text="${averagePrice != null ? #numbers.formatCurrency(averagePrice) : 'UGX 0'}">
+                                            UGX 0
+                                        </h3>
+                                        <p class="text-muted mb-0">Average Price</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 th:text="${todaySubmissions}">0</h3>
+                                        <p class="text-muted mb-0">Today's Submissions</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for interactivity -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        document.addEventListener('DOMContentLoaded', function() {
+            // Approve Modal
+            const approveModal = document.getElementById('approveModal');
+            approveModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const requestId = button.getAttribute('data-request-id');
+                const itemName = button.getAttribute('data-item-name');
+                const expectedPrice = button.getAttribute('data-expected-price');
+                
+                document.getElementById('approveItemName').textContent = itemName;
+                document.getElementById('expectedPriceDisplay').textContent = 
+                    'UGX ' + parseFloat(expectedPrice).toLocaleString();
+                
+                const form = document.getElementById('approveForm');
+                form.action = '/admin/sell-requests/' + requestId + '/approve';
+                
+                // Set initial final price to expected price
+                document.getElementById('finalPrice').value = expectedPrice;
+            });
+            
+            // Negotiate Modal
+            const negotiateModal = document.getElementById('negotiateModal');
+            negotiateModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const requestId = button.getAttribute('data-request-id');
+                const itemName = button.getAttribute('data-item-name');
+                const expectedPrice = button.getAttribute('data-expected-price');
+                
+                document.getElementById('negotiateItemName').textContent = itemName;
+                document.getElementById('negotiateExpectedPrice').textContent = 
+                    'UGX ' + parseFloat(expectedPrice).toLocaleString();
+                
+                const form = document.getElementById('negotiateForm');
+                form.action = '/admin/sell-requests/' + requestId + '/negotiate';
+                
+                // Set initial offer to expected price
+                document.getElementById('offeredPrice').value = expectedPrice;
+            });
+            
+            // Reject Modal
+            const rejectModal = document.getElementById('rejectModal');
+            rejectModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const requestId = button.getAttribute('data-request-id');
+                const itemName = button.getAttribute('data-item-name');
+                
+                document.getElementById('rejectItemName').textContent = itemName;
+                
+                const form = document.getElementById('rejectForm');
+                form.action = '/admin/sell-requests/' + requestId + '/reject';
+            });
+            
+            // Details Modal (AJAX)
+            const detailsModal = document.getElementById('detailsModal');
+            detailsModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const requestId = button.getAttribute('data-request-id');
+                
+                // Fetch request details via AJAX
+                fetch('/admin/api/sell-requests/' + requestId)
+                    .then(response => response.json())
+                    .then(data => {
+                        const detailsDiv = document.getElementById('requestDetails');
+                        detailsDiv.innerHTML = `
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Item Information</h6>
+                                    <p><strong>Name:</strong> ${data.itemName}</p>
+                                    <p><strong>Category:</strong> ${data.itemCategory}</p>
+                                    <p><strong>Condition:</strong> ${data.itemCondition}</p>
+                                    <p><strong>Description:</strong></p>
+                                    <p>${data.itemDescription || 'No description provided'}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Seller Information</h6>
+                                    <p><strong>Name:</strong> ${data.user.username}</p>
+                                    <p><strong>Email:</strong> ${data.user.email}</p>
+                                    <p><strong>Phone:</strong> ${data.user.phoneNumber || 'N/A'}</p>
+                                    <p><strong>Submitted:</strong> ${new Date(data.submittedAt).toLocaleString()}</p>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6>Pricing</h6>
+                                    <p><strong>Expected:</strong> UGX ${data.expectedPrice.toLocaleString()}</p>
+                                    ${data.negotiatedPrice ? `
+                                        <p><strong>Negotiated:</strong> UGX ${data.negotiatedPrice.toLocaleString()}</p>
+                                    ` : ''}
+                                    ${data.finalPrice ? `
+                                        <p><strong>Final:</strong> UGX ${data.finalPrice.toLocaleString()}</p>
+                                    ` : ''}
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Status</h6>
+                                    <p><strong>Current:</strong> <span class="badge bg-${getStatusColor(data.status)}">${data.status}</span></p>
+                                    ${data.reviewedBy ? `
+                                        <p><strong>Reviewed By:</strong> ${data.reviewedBy.username}</p>
+                                        <p><strong>Reviewed At:</strong> ${new Date(data.reviewedAt).toLocaleString()}</p>
+                                    ` : ''}
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Admin Notes</h6>
+                                    <p>${data.adminNotes || 'No admin notes'}</p>
+                                    ${data.rejectionReason ? `
+                                        <h6 class="mt-3">Rejection Reason</h6>
+                                        <p class="text-danger">${data.rejectionReason}</p>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching request details:', error);
+                        document.getElementById('requestDetails').innerHTML = 
+                            '<div class="alert alert-danger">Failed to load request details</div>';
+                    });
+            });
+            
+            // Initialize charts in stats modal
+            const statsModal = document.getElementById('statsModal');
+            statsModal.addEventListener('show.bs.modal', function() {
+                setTimeout(() => {
+                    initializeCharts();
+                }, 100);
+            });
+        });
+        
+        // Filter requests by status
+        function filterRequests(status) {
+            const badges = document.querySelectorAll('.filter-badge');
+            badges.forEach(badge => badge.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            
+            if (status === 'all') {
+                document.querySelectorAll('.request-card').forEach(card => {
+                    card.style.display = '';
+                });
+            } else {
+                document.querySelectorAll('.request-card').forEach(card => {
+                    if (card.classList.contains(status.toLowerCase())) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
+        }
+        
+        // Search requests
+        function searchRequests() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            document.querySelectorAll('.request-card').forEach(card => {
+                const itemName = card.querySelector('td:nth-child(2) .fw-bold').textContent.toLowerCase();
+                const description = card.querySelector('td:nth-child(2) .text-muted').textContent.toLowerCase();
+                const seller = card.querySelector('td:nth-child(3) div').textContent.toLowerCase();
+                
+                if (itemName.includes(searchTerm) || 
+                    description.includes(searchTerm) || 
+                    seller.includes(searchTerm)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+        
+        // Helper function for status color
+        function getStatusColor(status) {
+            switch(status) {
+                case 'PENDING': return 'warning';
+                case 'NEGOTIATING': return 'info';
+                case 'APPROVED': return 'success';
+                case 'REJECTED': return 'danger';
+                case 'COMPLETED': return 'secondary';
+                default: return 'light';
+            }
+        }
+        
+        // Initialize charts (simplified)
+        function initializeCharts() {
+            // This would be populated with actual data from the server
+            console.log('Charts would be initialized here with actual data');
+        }
+        /*]]>*/
+    </script>
+</body>
+</html>
