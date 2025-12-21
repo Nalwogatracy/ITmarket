@@ -26,6 +26,9 @@ public class User {
     @Column(name = "last_name", nullable = false)
     private String lastName;
     
+    @Column(name = "full_name",nullable = false)
+    private String fullName;
+    
     @Column(nullable = false, unique = true)
     private String email;
     
@@ -88,6 +91,7 @@ public class User {
         this();
         this.firstName = firstName;
         this.lastName = lastName;
+        this.fullName = firstName + " " + lastName.trim();
         this.username = username;
         this.email = email;
         this.password = password;
@@ -101,10 +105,16 @@ public class User {
     public void setUsername(String username) { this.username = username; }
     
     public String getFirstName() { return firstName; }
-    public void setFirstName(String firstName) { this.firstName = firstName; }
+    public void setFirstName(String firstName) { 
+        this.firstName = firstName;
+        updateFullName();
+    }
     
     public String getLastName() { return lastName; }
-    public void setLastName(String lastName) { this.lastName = lastName; }
+    public void setLastName(String lastName) { 
+        this.lastName = lastName;
+        updateFullName();
+    }
     
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
@@ -167,13 +177,58 @@ public class User {
     
     // Helper methods
     @PreUpdate
+    @PrePersist
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
     
     public String getFullName() {
-        return firstName + " " + lastName;
+            if (fullName == null || fullName.trim().isEmpty()) {
+           if (firstName != null && lastName != null) {
+               fullName = firstName + " " + lastName;
+           } else if (firstName != null) {
+               fullName = firstName;
+           } else if (lastName != null) {
+               fullName = lastName;
+           } else {
+               fullName = "";
+           }
+       }
+       return fullName;
+   }
+    
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
     }
+    
+    
+    protected void updateFullName() {
+        if (fullName == null || fullName.trim().isEmpty()) {
+            if (firstName != null && lastName != null) {
+                fullName = firstName + " " + lastName;
+            } else if (firstName != null) {
+                fullName = firstName;
+            } else if (lastName != null) {
+                fullName = lastName;
+            } else {
+                fullName = ""; // At least empty string, not null
+            }
+        }
+    }
+    protected void ensureFullName() {
+        if (fullName == null || fullName.trim().isEmpty()) {
+            if (firstName != null && lastName != null) {
+                fullName = firstName + " " + lastName;
+            } else if (firstName != null) {
+                fullName = firstName;
+            } else if (lastName != null) {
+                fullName = lastName;
+            } else {
+                fullName = ""; // At least empty string, not null
+            }
+        }
+    }
+    
     
     public boolean isSeller() {
         return "SELLER".equals(role) || "ADMIN".equals(role);

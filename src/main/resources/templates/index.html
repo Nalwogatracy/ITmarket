@@ -1976,53 +1976,104 @@
             // Form submission handling
             const loginForm = document.getElementById('loginForm');
             if (loginForm) {
-                loginForm.addEventListener('submit', function(e) {
+                loginForm.addEventListener('submit', async function(e) {
                     e.preventDefault();
                     
                     const username = document.getElementById('loginUsername').value.trim();
-                    const password = document.getElementById('loginPassword').value.trim();
+                    const password = document.getElementById('loginPassword').value;
                     
-                    // Simple validation
+                    // Clear previous errors
+                    document.getElementById('loginError').classList.add('hidden');
+                    
+                    // Basic validation
                     if (!username || !password) {
                         document.getElementById('loginError').textContent = 'Please fill in all fields';
                         document.getElementById('loginError').classList.remove('hidden');
                         return;
                     }
                     
-                    // Simulate login (in a real app, this would be an AJAX call to your backend)
-                    showLoading(true);
+                    // Show loading state
+                    const submitBtn = document.getElementById('loginSubmitBtn');
+                    const originalBtnText = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
                     
-                    setTimeout(() => {
-                        showLoading(false);
-                        showToast('Login successful!', 'success');
-                        closeModal('loginModal');
-                        // In a real app, you would redirect or update UI here
-                    }, 1500);
+                    try {
+                        const success = await loginUser(username, password);
+                        if (success) {
+                            showToast('Login successful!', 'success');
+                            closeModal('loginModal');
+                            // Page will reload after successful login
+                        }
+                    } catch (error) {
+                        console.error('Login error:', error);
+                        document.getElementById('loginError').textContent = 'Login failed. Please check your credentials.';
+                        document.getElementById('loginError').classList.remove('hidden');
+                    } finally {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                    }
                 });
             }
             
             const registerForm = document.getElementById('registerForm');
             if (registerForm) {
-                registerForm.addEventListener('submit', function(e) {
+                registerForm.addEventListener('submit', async function(e) {
                     e.preventDefault();
                     
-                    const password = document.getElementById('password').value;
-                    const confirmPassword = document.getElementById('confirmPassword').value;
+                    // Get form data
+                    const formData = {
+                        firstName: document.getElementById('firstName').value,
+                        lastName: document.getElementById('lastName').value,
+                        username: document.getElementById('username').value,
+                        email: document.getElementById('email').value,
+                        password: document.getElementById('password').value,
+                        confirmPassword: document.getElementById('confirmPassword').value,
+                        accountType: document.querySelector('input[name="accountType"]:checked')?.value || 'BUYER',
+                        termsAgreement: document.getElementById('termsAgreement').checked
+                    };
                     
-                    // Password validation
-                    if (password !== confirmPassword) {
+                    // Clear previous errors
+                    document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
+                    
+                    // Basic validation
+                    if (!formData.firstName || !formData.lastName || !formData.username || 
+                        !formData.email || !formData.password || !formData.confirmPassword) {
+                        showToast('Please fill in all required fields', 'error');
+                        return;
+                    }
+                    
+                    if (formData.password !== formData.confirmPassword) {
                         document.getElementById('confirmPasswordError').textContent = 'Passwords do not match';
                         return;
                     }
                     
-                    // Simulate registration (in a real app, this would be an AJAX call to your backend)
-                    showLoading(true);
+                    if (!formData.termsAgreement) {
+                        showToast('You must agree to the terms and conditions', 'error');
+                        return;
+                    }
                     
-                    setTimeout(() => {
-                        showLoading(false);
-                        showToast('Registration successful! Please check your email to verify your account.', 'success');
-                        closeModal('registerModal');
-                    }, 1500);
+                    // Show loading state
+                    const submitBtn = document.querySelector('#registerForm button[type="submit"]');
+                    const originalBtnText = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
+                    
+                    try {
+                        // Include confirmPassword in the registration data for server-side validation
+                        const success = await registerUser(formData);
+                        if (success) {
+                            showToast('Registration successful! Welcome to TechSphere.', 'success');
+                            closeModal('registerModal');
+                            // Page will reload after successful registration
+                        }
+                    } catch (error) {
+                        console.error('Registration error:', error);
+                        showToast('Registration failed. Please try again.', 'error');
+                    } finally {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                    }
                 });
             }
         });

@@ -50,6 +50,7 @@ public class UserService {
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new RuntimeException("Passwords do not match");
         }
+        System.out.println("Passwords match OK");
         
         // Create user - Use correct constructor
         User user = new User(
@@ -59,6 +60,7 @@ public class UserService {
             request.getEmail(),
             passwordEncoder.encode(request.getPassword())
         );
+        System.out.println("User created. Password encoded: " + (user.getPassword() != null));
         
         user.setPhoneNumber(request.getPhoneNumber());
         user.setEnabled(true); // CORRECTED: Use enabled instead of active

@@ -32,15 +32,22 @@ public class SessionManager {
         redisTemplate.opsForValue().set(userKey, user, SESSION_TIMEOUT, TimeUnit.SECONDS);
         
         System.out.println("Session created for user: " + user.getUsername());
+        System.out.println("Token generated (first 50 chars): " + token.substring(0, Math.min(50, token.length())) + "...");
         return token;
     }
     
     public User getUserFromSession(String token) {
-        if (token == null || !token.startsWith("Bearer ")) {
+        if (token == null) {
             return null;
         }
         
-        token = token.substring(7); // Remove "Bearer " prefix
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        } // Remove "Bearer " prefix
+        if (!jwtTokenUtil.isTokenValid(token)) {
+            System.err.println("Invalid JWT token");
+            return null;
+        }
         
         String sessionKey = SESSION_PREFIX + token;
         Long userId = (Long) redisTemplate.opsForValue().get(sessionKey);

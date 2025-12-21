@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,7 +24,15 @@ public class JwtTokenUtil {
     private int jwtExpirationMs;
     
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        try {
+            // Decode the Base64 string to get the raw bytes
+            byte[] keyBytes = Base64.getDecoder().decode(jwtSecret);
+            return Keys.hmacShaKeyFor(keyBytes);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Invalid Base64 JWT secret: " + e.getMessage());
+            // Fallback: if not Base64, use as-is (for backward compatibility)
+            return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        }
     }
     
     public String generateToken(User user) {
